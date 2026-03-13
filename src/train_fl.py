@@ -10,6 +10,18 @@ from src.fl_utils import train_local, fedavg, evaluate_model
 
 import torch
 from sklearn.metrics import confusion_matrix
+import numpy as np
+import shap
+import matplotlib.pyplot as plt
+import os
+
+from src.logger import setup_logger
+
+from src.shap_analysis import (
+    compute_shap_values_deep,
+    print_mean_abs_shap,
+    print_local_shap_explanation,
+)
 
 
 def evaluate_thresholds(model, X_test, y_test, thresholds=None, device="cpu"):
@@ -38,6 +50,7 @@ def evaluate_thresholds(model, X_test, y_test, thresholds=None, device="cpu"):
 
 
 def main():
+    setup_logger(__file__)
     csv_path = "data/creditcard.csv"
     num_clients = 4
     num_rounds = 5
@@ -46,7 +59,7 @@ def main():
     device = "cpu"
 
     print("Loading data...")
-    X_train, X_test, y_train, y_test, _ = load_and_preprocess_data(csv_path)
+    X_train, X_test, y_train, y_test, _, feature_names = load_and_preprocess_data(csv_path)
 
     print("Splitting into clients...")
     #clients = split_into_clients(X_train, y_train, num_clients=num_clients)
@@ -114,6 +127,68 @@ def main():
     )
 
     print_client_statistics(clients, amount_column_index=-1)
+
+    print("\n==============================")
+    print("Federated model SHAP analysis")
+    print("==============================")
+
+    rng = np.random.default_rng(42)
+    bg_idx = rng.choice(len(X_train), size=min(100, len(X_train)), replace=False)
+    X_background = X_train[bg_idx]
+
+    fraud_idx = np.where(y_test == 1)[0][:10]
+    normal_idx = np.where(y_test == 0)[0][:10]
+    selected_idx = np.concatenate([fraud_idx, normal_idx])
+
+    X_explain = X_test[selected_idx]
+    y_explain = y_test[selected_idx]
+
+    explainer, shap_values = compute_shap_values_deep(
+        model=global_model,
+        X_background=X_background,
+        X_explain=X_explain,
+        device=device,
+        check_additivity=False
+    )
+
+    print_mean_abs_shap(shap_values, feature_names, top_k=10)
+
+    # İlk fraud örneği
+    if len(fraud_idx) > 0:
+        print_local_shap_explanation(
+            shap_values=shap_values,
+            X_explain=X_explain,
+            y_true=y_explain,
+            feature_names=feature_names,
+            sample_index=0,
+            top_k=10
+        )
+
+    # İlk normal örneği
+    if len(normal_idx) > 0:
+        print_local_shap_explanation(
+            shap_values=shap_values,
+            X_explain=X_explain,
+            y_true=y_explain,
+            feature_names=feature_names,
+            sample_index=len(fraud_idx),
+            top_k=10
+        )
+
+    # SHAP summary plot kaydet
+    os.makedirs("outputs", exist_ok=True)
+
+    shap.summary_plot(
+        shap_values,
+        X_explain,
+        feature_names=feature_names,
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/shap_summary_federated.png", dpi=200, bbox_inches="tight")
+    plt.close()
+
+    print("\nFederated SHAP summary plot saved to: outputs/shap_summary_federated.png")
 
 
 if __name__ == "__main__":

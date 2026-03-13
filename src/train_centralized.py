@@ -15,6 +15,8 @@ import shap
 import matplotlib.pyplot as plt
 import os
 
+from src.logger import setup_logger
+
 def evaluate_thresholds(model, X_test, y_test, thresholds=None, device="cpu"):
     if thresholds is None:
         thresholds = [0.5, 0.7, 0.8, 0.9]
@@ -91,6 +93,7 @@ def print_confusion_matrix(model, X_test, y_test, threshold=0.5, device="cpu"):
 
 
 def main():
+    setup_logger(__file__)
     csv_path = "data/creditcard.csv"
     device = "cpu"
 

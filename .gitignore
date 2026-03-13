@@ -12,6 +12,7 @@ __pycache__/
 # Projeye özel veri klasörleri (GitHub'a yüklenmez)
 data/
 outputs/
+results/
 *.csv
 *.xlsx
 *.parquet
