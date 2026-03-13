@@ -29,7 +29,7 @@ def load_and_preprocess_data(csv_path: str, test_size: float = 0.2, random_state
 
     X = df.drop("Class", axis=1).copy()
     y = df["Class"].copy()
-
+    '''deneme'''
     feature_names = X.columns.tolist()
 
     X_train, X_test, y_train, y_test = train_test_split(
