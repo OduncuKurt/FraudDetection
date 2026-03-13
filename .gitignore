@@ -1,0 +1,38 @@
+# Python Sanal Ortam (Virtual Environment)
+venv/
+.env/
+.venv/
+env/
+
+# Derlenmiş dosyalar ve önbellek
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Projeye özel veri klasörleri (GitHub'a yüklenmez)
+data/
+outputs/
+*.csv
+*.xlsx
+*.parquet
+
+# Makine Öğrenmesi Model Dosyaları
+*.pkl
+*.model
+*.h5
+*.hdf5
+*.pt
+*.pth
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# IDE'ler (Visual Studio Code, PyCharm vb.)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
