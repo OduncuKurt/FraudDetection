@@ -1,0 +1,40 @@
+Logging output to results/train_fzsl_20260424_203545.txt
+============================================================
+1. Dataset yükleniyor...
+============================================================
+   Toplam kayıt: 284807  |  Fraud: 492  |  Normal: 284315
+
+============================================================
+2. Fraud subtype'ları KMeans ile üretiliyor (4 cluster)...
+============================================================
+
+Fraud Subtype Özeti:
+fraud_subtype  count  amount_mean  amount_std    time_mean     time_std    top_latent_features
+ fraud_type_0    207   172.798164  335.718452 92408.512077 47251.921964  V14, V4, V12, V3, V10
+ fraud_type_1     92    96.029239  165.312880 45425.869565 29542.925451   V3, V17, V7, V1, V12
+ fraud_type_2     15     2.219333    2.926615 97653.266667  3216.880709    V7, V3, V1, V10, V5
+ fraud_type_3    178    87.026798  178.132978 84016.224719 49567.969091 V14, V17, V12, V3, V10
+
+============================================================
+3. Seen/Unseen Ayrimi  ->  Unseen: fraud_type_3
+============================================================
+   Train (seen): 284629 sample
+   Test  (all) : 284807 sample
+
+   FZSL Split Distribution:
+fzsl_split
+normal    284315
+seen         314
+unseen       178
+
+   Input dim: 30  |  Train size: 284629
+   Class distribution (train):
+     normal              : 284315
+     fraud_type_0        : 207
+     fraud_type_1        : 92
+     fraud_type_2        : 15
+
+============================================================
+4. Class descriptions embedded with SBERT...
+============================================================
+[TextClassEncoder] SBERT modeli yükleniyor: paraphrase-MiniLM-L3-v2

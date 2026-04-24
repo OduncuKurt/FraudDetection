@@ -1,0 +1,151 @@
+Logging output to results/train_fzsl_20260424_205943.txt
+============================================================
+1. Dataset yükleniyor...
+============================================================
+   Toplam kayıt: 284807  |  Fraud: 492  |  Normal: 284315
+
+============================================================
+2. Fraud subtype'ları KMeans ile üretiliyor (4 cluster)...
+============================================================
+
+Fraud Subtype Özeti:
+fraud_subtype  count  amount_mean  amount_std    time_mean     time_std    top_latent_features
+ fraud_type_0    207   172.798164  335.718452 92408.512077 47251.921964  V14, V4, V12, V3, V10
+ fraud_type_1     92    96.029239  165.312880 45425.869565 29542.925451   V3, V17, V7, V1, V12
+ fraud_type_2     15     2.219333    2.926615 97653.266667  3216.880709    V7, V3, V1, V10, V5
+ fraud_type_3    178    87.026798  178.132978 84016.224719 49567.969091 V14, V17, V12, V3, V10
+
+============================================================
+3. Seen/Unseen Ayrimi  ->  Unseen: fraud_type_3
+============================================================
+   Train (seen): 284629 sample
+   Test  (all) : 284807 sample
+
+   FZSL Split Distribution:
+fzsl_split
+normal    284315
+seen         314
+unseen       178
+
+   Input dim: 30  |  Train size: 284629
+   Class distribution (train):
+     normal              : 284315
+     fraud_type_0        : 207
+     fraud_type_1        : 92
+     fraud_type_2        : 15
+
+============================================================
+4. Class descriptions embedded with SBERT...
+============================================================
+[TextClassEncoder] Local TF-IDF+RandomProjection hazir (dim=128)
+[TextClassEncoder] TF-IDF vocab boyutu: 2247
+[TextClassEncoder] Sinif embedding matrisi: (5, 128)  (hedef=128, gercek=128)
+[TextClassEncoder] Sinif embedding matrisi: (4, 128)  (hedef=128, gercek=128)
+   Toplam sınıf embedding boyutu: (5, 128)
+
+============================================================
+5. FZSL model training (InfoNCE loss)...
+============================================================
+
+[FZSL Train] 284629 ornek | 30 epoch | batch=256
+[FZSL Train] Sinif dagilimi: {'normal': 284315, 'fraud_type_0': 207, 'fraud_type_1': 92, 'fraud_type_2': 15}
+[FZSL Train] WeightedSampler aktif: fraud ornekleri oversample ediliyor
+  Epoch   1/30  loss=0.27976  temp=2.8377
+  Epoch   5/30  loss=0.00589  temp=6.5400
+  Epoch  10/30  loss=0.00310  temp=8.4747
+  Epoch  15/30  loss=0.00182  temp=9.2280
+  Epoch  20/30  loss=0.00120  temp=9.6275
+  Epoch  25/30  loss=0.00064  temp=10.0009
+  Epoch  30/30  loss=0.00064  temp=10.0607
+
+[FZSL Train] En iyi loss: 0.00051
+[Plot] Loss eğrisi kaydedildi: outputs/fzsl_loss_curve.png
+
+============================================================
+6. Zero-shot predictor initializing (seen + unseen)...
+============================================================
+
+============================================================
+7. Evaluation
+============================================================
+
+Optimal threshold aranıyor...
+
+[Threshold Opt] Best F1 @ threshold=0.7902
+  Precision=0.9579  Recall=0.9715  F1=0.9647
+[Threshold Opt] Best Precision (recall>=0.8) @ threshold=0.8263
+  Precision=0.9880  Recall=0.8333  F1=0.9041
+
+──────────────────────────────────────────────────
+  Full Test Set @ threshold=0.5 (baseline)
+  Threshold = 0.5000
+──────────────────────────────────────────────────
+  Accuracy  : 0.0017
+  Precision : 0.0017
+  Recall    : 1.0000
+  F1        : 0.0034
+  ROC-AUC   : 1.0000
+  PR-AUC    : 0.9934
+  Confusion Matrix:
+    [[     0 284315]
+ [     0    492]]
+
+──────────────────────────────────────────────────
+  Full Test Set @ Optimal F1 Threshold
+  Threshold = 0.7902
+──────────────────────────────────────────────────
+  Accuracy  : 0.9999
+  Precision : 0.9579
+  Recall    : 0.9715
+  F1        : 0.9647
+  ROC-AUC   : 1.0000
+  PR-AUC    : 0.9934
+  Confusion Matrix:
+    [[284294     21]
+ [    14    478]]
+
+──────────────────────────────────────────────────
+  Seen Classes @ Optimal F1 Threshold
+  Threshold = 0.7902
+──────────────────────────────────────────────────
+  Accuracy  : 0.9999
+  Precision : 0.9373
+  Recall    : 1.0000
+  F1        : 0.9676
+  ROC-AUC   : 1.0000
+  PR-AUC    : 0.9942
+  Confusion Matrix:
+    [[284294     21]
+ [     0    314]]
+
+──────────────────────────────────────────────────
+  UNSEEN Sınıf Zero-Shot Değerlendirmesi (fraud_type_3)
+──────────────────────────────────────────────────
+  Örnek sayısı         : 178
+  Fraud tespit oranı   : 0.9831
+  Tahmin dağılımı      : {np.str_('fraud_type_0'): np.int64(113), np.str_('fraud_type_1'): np.int64(61), np.str_('fraud_type_3'): np.int64(1), np.str_('normal'): np.int64(3)}
+  Ortalama Similarity Skorları:
+    fraud_type_0      : 0.4880
+    fraud_type_3      : 0.1515 ← (unseen target)
+    fraud_type_1      : 0.1410
+    normal            : -0.1192
+    fraud_type_2      : -0.4514
+
+============================================================
+8. Generating visualizations...
+============================================================
+[Plot] PR curve kaydedildi: outputs/fzsl_pr_curve.png
+[Plot] Loss eğrisi kaydedildi: outputs/fzsl_loss_curve.png
+[Plot] Similarity ısı haritası kaydedildi: outputs/fzsl_similarity_heatmap.png
+
+============================================================
+9. Saving model...
+============================================================
+   Kaydedildi: checkpoints/fzsl_model.pt
+
+============================================================
+[DONE] FZSL Pipeline completed!
+   Outputs: outputs/fzsl_loss_curve.png
+            outputs/fzsl_similarity_heatmap.png
+   Model  : checkpoints/fzsl_model.pt
+============================================================

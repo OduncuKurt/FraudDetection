@@ -8,7 +8,10 @@ class TeeLogger:
         self.file = open(filename, "w", encoding="utf-8")
 
     def write(self, message):
-        self.terminal.write(message)
+        try:
+            self.terminal.write(message)
+        except UnicodeEncodeError:
+            self.terminal.write(message.encode("ascii", errors="replace").decode("ascii"))
         self.file.write(message)
         self.file.flush()
 

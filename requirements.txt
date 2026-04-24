@@ -3,3 +3,6 @@ numpy
 scikit-learn
 torch
 requests
+shap
+matplotlib
+sentence-transformers
