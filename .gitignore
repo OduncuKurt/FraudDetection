@@ -1,4 +1,4 @@
-# Python Sanal Ortam (Virtual Environment)
+# Python Sanal Ortam
 venv/
 .env/
 .venv/
@@ -9,13 +9,14 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Projeye özel veri klasörleri (GitHub'a yüklenmez)
+# ─── Veri dosyaları (büyük, GitHub'a yüklenmiyor) ───────────────────────────
 data/
 *.csv
 *.xlsx
 *.parquet
 
-# Makine Öğrenmesi Model Dosyaları
+# ─── Eğitilmiş model dosyaları (büyük, indirilebilir) ───────────────────────
+checkpoints/
 *.pkl
 *.model
 *.h5
@@ -23,15 +24,21 @@ data/
 *.pt
 *.pth
 
-# Jupyter Notebook
+# ─── Otomatik üretilen log/sonuç dosyaları ──────────────────────────────────
+results/
+
+# ─── Jupyter ─────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/
 
-# IDE'ler (Visual Studio Code, PyCharm vb.)
+# ─── IDE ─────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Sistem dosyaları
+# ─── Sistem ──────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ─── HuggingFace model cache ─────────────────────────────────────────────────
+.cache/
