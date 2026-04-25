@@ -44,13 +44,26 @@ def train_local(model, X, y, epochs=2, lr=1e-3, batch_size=256, device="cpu"):
     return model.state_dict()
 
 
-def fedavg(state_dicts):
-    avg_state = copy.deepcopy(state_dicts[0])
+def fedavg(state_dicts, sample_sizes=None):
+    """
+    FedAvg: İstemci model ağırlıklarını ortalar.
 
+    sample_sizes : Her istemcinin eğitim örnek sayısı listesi.
+                   Verilirse ağırlıklı ortalama (weighted FedAvg) uygulanır;
+                   None ise tüm istemciler eşit ağırlığa sahip olur.
+    """
+    if sample_sizes is None:
+        sample_sizes = [1] * len(state_dicts)
+
+    total_samples = sum(sample_sizes)
+    weights = [s / total_samples for s in sample_sizes]
+
+    avg_state = copy.deepcopy(state_dicts[0])
     for key in avg_state.keys():
-        for i in range(1, len(state_dicts)):
-            avg_state[key] += state_dicts[i][key]
-        avg_state[key] = avg_state[key] / len(state_dicts)
+        # Sıfırdan ağırlıklı toplam yap
+        avg_state[key] = torch.zeros_like(avg_state[key], dtype=torch.float32)
+        for w, sd in zip(weights, state_dicts):
+            avg_state[key] += w * sd[key].float()
 
     return avg_state
 

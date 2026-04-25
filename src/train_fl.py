@@ -95,7 +95,9 @@ def main():
             )
             local_states.append(local_state)
 
-        new_global_state = fedavg(local_states)
+        # Her client'ın ornek sayisina gore agirlikli FedAvg
+        sample_sizes = [len(client_X) for client_X, _ in clients]
+        new_global_state = fedavg(local_states, sample_sizes=sample_sizes)
         global_model.load_state_dict(new_global_state)
 
         print("\nThreshold = 0.5 sonuçları:")
