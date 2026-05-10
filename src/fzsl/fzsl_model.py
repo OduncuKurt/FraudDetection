@@ -149,10 +149,12 @@ class FZSLPredictor:
         class_text_embeddings: np.ndarray,   # [num_all_classes, text_dim]
         class_order: list,                   # class isimlerinin sırası
         device: str = "cpu",
+        optimal_threshold: float = 0.5,      # find_optimal_threshold ile ayarlanabilir
     ):
         self.model = model.to(device)
         self.device = device
         self.class_order = class_order
+        self.optimal_threshold = optimal_threshold
 
         # Text embedding'leri cihaza taşı ve model projection'dan geçir
         self.model.eval()
@@ -202,3 +204,13 @@ class FZSLPredictor:
         fraud_proba = proba[:, fraud_indices].sum(axis=1)
 
         return fraud_proba
+
+    def predict_fraud(self, X: np.ndarray, threshold: float = None) -> np.ndarray:
+        """
+        Binary fraud tahmini.
+
+        threshold : None ise self.optimal_threshold kullanılır.
+        Dönüş   : np.array [N] — 0=normal, 1=fraud
+        """
+        thr = threshold if threshold is not None else self.optimal_threshold
+        return (self.is_fraud_proba(X) >= thr).astype(int)

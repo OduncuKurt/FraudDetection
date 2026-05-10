@@ -464,7 +464,7 @@ def main():
     print("\n" + "=" * 60)
     print("4. Class descriptions embedded with SBERT...")
     print("=" * 60)
-    text_encoder = TextClassEncoder(embed_dim=128, backend="local")
+    text_encoder = TextClassEncoder(embed_dim=128, backend="sbert")
 
     # Tüm sınıflar (seen + unseen) için embedding → inference'da kullanılacak
     all_class_order = SEEN_CLASSES + [UNSEEN_CLASS]
@@ -508,11 +508,13 @@ def main():
     print("\n" + "=" * 60)
     print("6. Zero-shot predictor initializing (seen + unseen)...")
     print("=" * 60)
+    # Predictor'ı önce varsayılan 0.5 threshold ile oluştur
     predictor = FZSLPredictor(
         model=fzsl_model,
         class_text_embeddings=all_text_emb_matrix,
         class_order=all_class_order,
         device=device,
+        optimal_threshold=0.5,  # aşağıda PR eğrisinden optimize edilecek
     )
 
     # ── 7. Değerlendirme ───────────────────────────────────────────────────
@@ -526,14 +528,11 @@ def main():
     opt_thresholds = find_optimal_threshold(y_binary_test, full_fraud_proba, min_recall=0.80)
     best_threshold = opt_thresholds["f1_optimal"]["threshold"]
 
-    # 8a. Tum test seti — threshold=0.5 (baseline)
-    evaluate_zsl_binary(
-        predictor, X_test, y_binary_test, subtypes_test,
-        label="Full Test Set @ threshold=0.5 (baseline)",
-        threshold=0.5
-    )
+    # Bulunan optimal threshold'u predictor'a kaydet
+    predictor.optimal_threshold = best_threshold
+    print(f"   Predictor optimal threshold güncellendi: {best_threshold:.4f}")
 
-    # 8b. Tum test seti — optimal threshold
+    # Tum test seti — optimal threshold (tek referans noktası)
     evaluate_zsl_binary(
         predictor, X_test, y_binary_test, subtypes_test,
         label="Full Test Set @ Optimal F1 Threshold",
