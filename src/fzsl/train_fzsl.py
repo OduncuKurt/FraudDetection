@@ -415,7 +415,7 @@ def main():
     csv_path = "data/creditcard.csv"
     device = "cpu"
     proj_dim = 128
-    epochs = 30
+    epochs = 2
     lr = 1e-3
     batch_size = 256
     os.makedirs("outputs", exist_ok=True)
@@ -464,7 +464,7 @@ def main():
     print("\n" + "=" * 60)
     print("4. Class descriptions embedded with SBERT...")
     print("=" * 60)
-    text_encoder = TextClassEncoder(embed_dim=128, backend="sbert")
+    text_encoder = TextClassEncoder(embed_dim=128, backend="local")
 
     # Tüm sınıflar (seen + unseen) için embedding → inference'da kullanılacak
     all_class_order = SEEN_CLASSES + [UNSEEN_CLASS]
