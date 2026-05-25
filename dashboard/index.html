@@ -230,6 +230,14 @@
           <span class="meta-value" id="modal-amount">—</span>
         </div>
         <div class="modal-meta-item">
+          <span class="meta-label">🔵 FL Binary Olasılık</span>
+          <span class="meta-value" id="modal-fl-prob" style="color:#3b82f6">—</span>
+        </div>
+        <div class="modal-meta-item">
+          <span class="meta-label">🟣 FZSL Fraud Olasılık</span>
+          <span class="meta-value" id="modal-fzsl-prob" style="color:#8b5cf6">—</span>
+        </div>
+        <div class="modal-meta-item">
           <span class="meta-label">Güven Skoru</span>
           <span class="meta-value" id="modal-confidence">—</span>
         </div>
@@ -239,7 +247,10 @@
         </div>
       </div>
 
-      <h4 class="modal-shap-title">🔍 SHAP Özellik Önemi</h4>
+      <h4 class="modal-shap-title">📐 FZSL Benzerlik Skorları (Tüm Sınıflar)</h4>
+      <div id="modal-sim-scores" class="modal-sim-scores"></div>
+
+      <h4 class="modal-shap-title" style="margin-top:16px">🔍 SHAP — Hangi Özellik Neden Etkiledi?</h4>
       <div class="chart-wrapper" style="max-height:200px">
         <canvas id="chartModalShap" height="180"></canvas>
       </div>

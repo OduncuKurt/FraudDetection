@@ -1,50 +1,35 @@
-// ─────────────────────────────────────────────
-//  FraudDetection Dashboard — app.js
-// ─────────────────────────────────────────────
+// FraudDetection Dashboard — app.js (Gerçek Model Entegrasyonu)
 const API = 'http://localhost:8001';
 const POLL_MS = 1000;
 
-// ── Fraud tipi meta (fallback — API'den de alınıyor)
 const FRAUD_META = {
-  fraud_type_0:      { label: 'Tip 0 — Yüksek Değerli', color: '#ef4444', icon: '💳' },
-  fraud_type_1:      { label: 'Tip 1 — Hesap Ele Geçirme', color: '#f59e0b', icon: '🔑' },
-  fraud_type_2:      { label: 'Tip 2 — Mikro İşlem', color: '#eccc68', icon: '🔍' },
-  UNKNOWN_NEW_FRAUD: { label: '⚠️ YENİ FRAUD TİPİ',       color: '#a855f7', icon: '🚨' },
-  normal:            { label: 'Normal', color: '#10b981', icon: '✅' },
+  fraud_type_0:  { label: 'Tip 0 — Yüksek Değerli Fraud', color: '#ef4444', icon: '💳' },
+  fraud_type_1:  { label: 'Tip 1 — Hesap Ele Geçirme',    color: '#f59e0b', icon: '🔑' },
+  fraud_type_2:  { label: 'Tip 2 — Mikro Kart Testi',      color: '#eab308', icon: '🔍' },
+  fraud_type_3:  { label: '⚠️ YENİ — Para Aklama (ZSL)',   color: '#a855f7', icon: '🚨' },
+  normal:        { label: 'Normal İşlem',                   color: '#10b981', icon: '✅' },
 };
 
-// ── State
-let fraudTypes = {};
-let modalShapChart = null;
-let currentAlerts = [];
+let chartFlow, chartPie, chartShap, chartMetrics, chartModalShap;
+const FLOW_MAX = 60;
+const flowLabels  = Array(FLOW_MAX).fill('');
+const flowNormal  = Array(FLOW_MAX).fill(0);
+const flowFraud   = Array(FLOW_MAX).fill(0);
+let normalBuf = 0, fraudBuf = 0;
 
-// ── Chart instances
-let chartFlow, chartPie, chartShap, chartMetrics;
-const FLOW_MAX = 60; // son N veri noktası
-const flowLabels = Array.from({ length: FLOW_MAX }, (_, i) => '');
-const flowNormal = Array(FLOW_MAX).fill(0);
-const flowFraud  = Array(FLOW_MAX).fill(0);
-
-// ─────────────────────────────
-//  INIT
-// ─────────────────────────────
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   initCharts();
-  await loadFraudTypes();
-  await loadComparison();
+  loadComparison();
   loadShap('fraud_type_0');
   startPolling();
 });
 
-// ─────────────────────────────
-//  CHARTS INIT
-// ─────────────────────────────
+// ── CHARTS ──────────────────────────────────────────
 function initCharts() {
   Chart.defaults.color = '#64748b';
   Chart.defaults.borderColor = '#1e2640';
   Chart.defaults.font.family = "'Inter', sans-serif";
 
-  // Flow chart
   chartFlow = new Chart(document.getElementById('chartFlow'), {
     type: 'line',
     data: {
@@ -54,312 +39,230 @@ function initCharts() {
         { label: 'Fraud',  data: flowFraud,  borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,.1)',  fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
       ]
     },
-    options: {
-      animation: false,
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { display: false },
-        y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { maxTicksLimit: 4 } }
-      },
-      plugins: { legend: { display: false } }
-    }
+    options: { animation: false, responsive: true, maintainAspectRatio: false, scales: { x:{display:false}, y:{grid:{color:'rgba(255,255,255,.04)'}, ticks:{maxTicksLimit:4}} }, plugins:{legend:{display:false}} }
   });
 
-  // Pie chart
   chartPie = new Chart(document.getElementById('chartPie'), {
     type: 'doughnut',
     data: {
-      labels: ['Tip 0', 'Tip 1', 'Tip 2', 'Yeni Fraud'],
-      datasets: [{
-        data: [0, 0, 0, 0],
-        backgroundColor: ['#ef4444', '#f59e0b', '#eccc68', '#a855f7'],
-        borderColor: '#161b2e',
-        borderWidth: 3,
-      }]
+      labels: ['Tip 0', 'Tip 1', 'Tip 2', 'Tip 3 (ZSL)'],
+      datasets: [{ data: [0,0,0,0], backgroundColor: ['#ef4444','#f59e0b','#eab308','#a855f7'], borderColor:'#161b2e', borderWidth:3 }]
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      cutout: '60%',
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: (ctx) => ` ${ctx.label}: ${ctx.parsed} adet`
-          }
-        }
-      }
-    }
+    options: { responsive:true, maintainAspectRatio:false, cutout:'60%', plugins:{ legend:{display:false}, tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.parsed} adet`}} } }
   });
-  buildPieLegend();
 
-  // SHAP chart (initialized in loadShap)
   chartShap = new Chart(document.getElementById('chartShap'), {
-    type: 'bar',
-    data: { labels: [], datasets: [] },
-    options: shapOptions()
+    type: 'bar', data: { labels:[], datasets:[] }, options: shapChartOptions()
   });
 
-  // Metrics chart
   chartMetrics = new Chart(document.getElementById('chartMetrics'), {
     type: 'bar',
     data: {
-      labels: ['Precision', 'Recall', 'F1', 'ROC-AUC', 'PR-AUC'],
+      labels: ['Precision', 'Recall', 'F1 Skoru', 'ROC-AUC', 'PR-AUC'],
       datasets: [
-        { label: 'Centralized',     data: [0.9289, 0.9388, 0.9338, 0.9991, 0.7741], backgroundColor: 'rgba(100,116,139,.7)', borderRadius: 6 },
-        { label: 'Federated (FL)',  data: [0.9373, 1.0000, 0.9676, 1.0000, 0.9942], backgroundColor: 'rgba(59,130,246,.8)',  borderRadius: 6 },
-        { label: 'FL + FZSL',       data: [0.9579, 0.9715, 0.9647, 1.0000, 0.9934], backgroundColor: 'rgba(139,92,246,.9)', borderRadius: 6 },
+        { label: 'Centralized',    data:[0.9289,0.9388,0.9338,0.9991,0.7741], backgroundColor:'rgba(100,116,139,.7)', borderRadius:6 },
+        { label: 'Federated (FL)', data:[0.9373,1.0000,0.9676,1.0000,0.9942], backgroundColor:'rgba(59,130,246,.8)',  borderRadius:6 },
+        { label: 'FL + FZSL',      data:[0.9579,0.9715,0.9647,1.0000,0.9934], backgroundColor:'rgba(139,92,246,.9)', borderRadius:6 },
       ]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: { min: 0.7, max: 1.02, grid: { color: 'rgba(255,255,255,.04)' }, ticks: { callback: v => (v*100).toFixed(0)+'%', maxTicksLimit: 5 } },
-        x: { grid: { display: false } }
-      },
-      plugins: {
-        legend: { labels: { color: '#94a3b8', usePointStyle: true, pointStyle: 'rectRounded', padding: 16 } },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${(ctx.parsed.y*100).toFixed(2)}%` } }
-      }
+      responsive:true, maintainAspectRatio:false,
+      scales:{ y:{min:0.7,max:1.02,grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>(v*100).toFixed(0)+'%',maxTicksLimit:5}}, x:{grid:{display:false}} },
+      plugins:{ legend:{labels:{color:'#94a3b8',usePointStyle:true,padding:16}}, tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${(ctx.parsed.y*100).toFixed(2)}%`}} }
     }
   });
+
+  buildPieLegend();
 }
 
-function shapOptions() {
+function shapChartOptions() {
   return {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { callback: v => v.toFixed(2) } },
-      y: { grid: { display: false }, ticks: { font: { family: "'JetBrains Mono', monospace", size: 11 } } }
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    scales:{
+      x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>v.toFixed(2)}},
+      y:{grid:{display:false},ticks:{font:{family:"'JetBrains Mono',monospace",size:11}}}
     },
-    plugins: { legend: { display: false } }
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` SHAP: ${ctx.parsed.x.toFixed(4)}`}}}
   };
 }
 
-// ─────────────────────────────
-//  POLLING
-// ─────────────────────────────
-let pollTimer = null;
-let normalBatch = 0, fraudBatch = 0;
-let flowTick = 0;
+function buildPieLegend() {
+  const items = [
+    {label:'Tip 0 — Yüksek Değerli',color:'#ef4444'},
+    {label:'Tip 1 — Hesap Ele Geçirme',color:'#f59e0b'},
+    {label:'Tip 2 — Mikro Kart Testi',color:'#eab308'},
+    {label:'Tip 3 — ZSL Yeni Fraud',color:'#a855f7'},
+  ];
+  document.getElementById('pie-legend').innerHTML = items.map(i=>`
+    <div class="pie-legend-item">
+      <span class="pie-legend-dot" style="background:${i.color}"></span>
+      <span>${i.label}</span>
+    </div>`).join('');
+}
 
+// ── POLLING ─────────────────────────────────────────
 function startPolling() {
-  document.getElementById('status-text').textContent = 'Canlı — 1 işlem/sn';
-  pollTimer = setInterval(poll, POLL_MS);
+  setEl('status-text', 'Canlı — 1 işlem/sn');
+  setInterval(poll, POLL_MS);
 }
 
 async function poll() {
   try {
     const [txn, stats] = await Promise.all([
-      fetch(`${API}/api/stream`).then(r => r.json()),
-      fetch(`${API}/api/stats`).then(r => r.json()),
+      fetch(`${API}/api/stream`).then(r=>r.json()),
+      fetch(`${API}/api/stats`).then(r=>r.json()),
     ]);
     handleTransaction(txn);
     updateStats(stats);
-    document.getElementById('header-status').querySelector('.pulse-dot').style.background = '#10b981';
-  } catch (e) {
-    document.getElementById('status-text').textContent = 'Bağlantı hatası — yeniden deneniyor…';
-    document.getElementById('header-status').querySelector('.pulse-dot').style.background = '#ef4444';
+    document.querySelector('.pulse-dot').style.background = '#10b981';
+    setEl('status-text', txn.model_used === 'REAL — FL + FZSL' ? '🟢 Gerçek Model Aktif' : '🟡 Simülasyon Modu');
+  } catch(e) {
+    setEl('status-text', '🔴 Bağlantı hatası…');
+    document.querySelector('.pulse-dot').style.background = '#ef4444';
   }
 }
 
-// ─────────────────────────────
-//  TRANSACTION HANDLER
-// ─────────────────────────────
+// ── TRANSACTION HANDLER ─────────────────────────────
 function handleTransaction(txn) {
+  addFeedItem(txn);
   if (txn.is_fraud) {
-    fraudBatch++;
-    addFeedItem(txn);
     addAlertItem(txn);
     showToast(txn);
-    if (txn.fraud_type === 'UNKNOWN_NEW_FRAUD') {
-      showUnknownFraudBanner();
-    }
+    fraudBuf++;
   } else {
-    normalBatch++;
-    addFeedItem(txn);
+    normalBuf++;
   }
-
-  // Flow chart update
-  flowTick++;
-  if (flowTick % 1 === 0) {
-    flowNormal.shift(); flowNormal.push(normalBatch);
-    flowFraud.shift();  flowFraud.push(fraudBatch);
-    normalBatch = 0; fraudBatch = 0;
-    chartFlow.update('none');
-  }
+  // Flow chart
+  flowNormal.shift(); flowNormal.push(normalBuf);
+  flowFraud.shift();  flowFraud.push(fraudBuf);
+  normalBuf = 0; fraudBuf = 0;
+  chartFlow.update('none');
 }
 
-// ─────────────────────────────
-//  FEED
-// ─────────────────────────────
+// ── FEED ────────────────────────────────────────────
 function addFeedItem(txn) {
-  const container = document.getElementById('feed-container');
-  const empty = container.querySelector('.feed-empty');
+  const c = document.getElementById('feed-container');
+  const empty = c.querySelector('.feed-empty');
   if (empty) empty.remove();
 
-  const typeClass = txnTypeClass(txn.fraud_type);
+  const isUnknown = txn.fraud_type === 'fraud_type_3';
   const meta = FRAUD_META[txn.fraud_type] || FRAUD_META.normal;
+  const cls = txn.is_fraud ? (isUnknown ? 'unknown' : 'fraud') : 'normal';
+
+  // FL olasılık çubuğu — gerçek model bilgisi
+  const flPct = txn.fl_probability != null ? Math.round(txn.fl_probability * 100) : null;
+  const flBar = flPct != null
+    ? `<span class="fl-bar" title="FL Prob: ${flPct}%"><span style="width:${flPct}%;background:${meta.color}"></span></span>`
+    : '';
+
   const div = document.createElement('div');
-  div.className = `feed-item ${txn.is_fraud ? (txn.fraud_type === 'UNKNOWN_NEW_FRAUD' ? 'unknown' : 'fraud') : 'normal'}`;
+  div.className = `feed-item ${cls}`;
+  div.style.cursor = txn.is_fraud ? 'pointer' : 'default';
   div.innerHTML = `
     <span class="feed-id">${txn.id}</span>
     <span class="feed-amount">$${txn.amount.toFixed(2)}</span>
-    <span class="feed-type ${typeClass}">${txn.fraud_type === 'UNKNOWN_NEW_FRAUD' ? '⚠️ YENİ' : txn.is_fraud ? txn.fraud_type : 'NORMAL'}</span>
+    ${flBar}
+    <span class="feed-type type-${txn.is_fraud ? txn.fraud_type.replace('_','-') : 'normal'}">${txn.is_fraud ? (isUnknown ? '⚠️ ZSL' : txn.fraud_type) : 'NORMAL'}</span>
   `;
-  container.prepend(div);
-  // Keep max 80 items
-  const items = container.querySelectorAll('.feed-item');
-  if (items.length > 80) items[items.length-1].remove();
+  if (txn.is_fraud) div.onclick = () => openModal(txn);
+  c.prepend(div);
+  const items = c.querySelectorAll('.feed-item');
+  if (items.length > 100) items[items.length-1].remove();
 }
 
-function txnTypeClass(ft) {
-  const m = { fraud_type_0:'type-fraud0', fraud_type_1:'type-fraud1', fraud_type_2:'type-fraud2', UNKNOWN_NEW_FRAUD:'type-unknown', normal:'type-normal' };
-  return m[ft] || 'type-normal';
-}
-
-// ─────────────────────────────
-//  ALERTS
-// ─────────────────────────────
+// ── ALERTS ──────────────────────────────────────────
 function addAlertItem(txn) {
-  const container = document.getElementById('alerts-container');
-  const empty = container.querySelector('.feed-empty');
+  const c = document.getElementById('alerts-container');
+  const empty = c.querySelector('.feed-empty');
   if (empty) empty.remove();
 
-  const meta = FRAUD_META[txn.fraud_type] || { label: txn.fraud_type, color: '#ef4444', icon: '🚨' };
-  const isUnknown = txn.fraud_type === 'UNKNOWN_NEW_FRAUD';
+  const meta = FRAUD_META[txn.fraud_type] || {label:txn.fraud_type, color:'#ef4444', icon:'🚨'};
+  const isUnknown = txn.fraud_type === 'fraud_type_3';
+
+  // Similarity skorları (gerçek model çıktısı)
+  let simHtml = '';
+  if (txn.similarity_scores && Object.keys(txn.similarity_scores).length > 0) {
+    const sorted = Object.entries(txn.similarity_scores).sort((a,b)=>b[1]-a[1]);
+    simHtml = `<div class="sim-scores">${sorted.slice(0,3).map(([k,v])=>
+      `<span class="sim-chip" style="border-color:${FRAUD_META[k]?.color||'#64748b'}">${k}: ${v.toFixed(3)}</span>`
+    ).join('')}</div>`;
+  }
+
   const div = document.createElement('div');
   div.className = `alert-item ${isUnknown ? 'unknown' : ''}`;
-  div.setAttribute('data-txn', JSON.stringify(txn));
   div.onclick = () => openModal(txn);
   div.innerHTML = `
     <div class="alert-header">
       <span class="alert-type" style="color:${meta.color}">${meta.icon} ${meta.label}</span>
-      <span class="alert-conf">${(txn.confidence * 100).toFixed(1)}%</span>
+      <span class="alert-conf">FL: ${(txn.fl_probability*100).toFixed(1)}%</span>
     </div>
     <div class="alert-meta">${txn.id} · $${txn.amount.toFixed(2)} · ${new Date(txn.timestamp*1000).toLocaleTimeString('tr')}</div>
+    ${simHtml}
     <div class="alert-desc">${txn.message}</div>
   `;
-  container.prepend(div);
+  c.prepend(div);
   const badge = document.getElementById('alert-count-badge');
   badge.textContent = parseInt(badge.textContent||'0') + 1;
-  const items = container.querySelectorAll('.alert-item');
+  const items = c.querySelectorAll('.alert-item');
   if (items.length > 30) items[items.length-1].remove();
-
-  currentAlerts.unshift(txn);
 }
 
-// ─────────────────────────────
-//  STATS
-// ─────────────────────────────
-function updateStats(stats) {
-  const fmt = n => n >= 1e6 ? (n/1e6).toFixed(1)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : n;
-  const fmtDollar = n => n >= 1e6 ? '$'+(n/1e6).toFixed(1)+'M' : '$'+(n/1e3).toFixed(1)+'K';
+// ── STATS ────────────────────────────────────────────
+function updateStats(s) {
+  const fmt = n => n>=1e6?`${(n/1e6).toFixed(1)}M`:n>=1e3?`${(n/1e3).toFixed(1)}K`:`${n}`;
+  const fmtD = n => n>=1e6?`$${(n/1e6).toFixed(1)}M`:`$${(n/1e3).toFixed(1)}K`;
 
-  setEl('kpi-total-val', fmt(stats.total_transactions));
-  setEl('kpi-total-sub', `Uptime: ${fmtUptime(stats.uptime_seconds)}`);
-  setEl('kpi-fraud-val', stats.fraud_total);
-  setEl('kpi-fraud-sub', `Oran: ${stats.fraud_rate_pct.toFixed(4)}%`);
-  setEl('kpi-unknown-val', stats.fraud_unknown_count);
-  setEl('kpi-amount-val', fmtDollar(stats.amounts_processed));
-  setEl('kpi-amount-sub', `Engellenen: ${fmtDollar(stats.fraud_amounts)}`);
-  setEl('hdr-total', fmt(stats.total_transactions));
-  setEl('hdr-fraud', stats.fraud_total);
-  setEl('feed-rate', `~${(stats.total_transactions / Math.max(1, stats.uptime_seconds)).toFixed(1)} işlem/sn`);
+  setEl('kpi-total-val', fmt(s.total_transactions));
+  setEl('kpi-total-sub', `Uptime: ${fmtUptime(s.uptime_seconds)}`);
+  setEl('kpi-fraud-val', s.fraud_total);
+  setEl('kpi-fraud-sub', `Oran: ${s.fraud_rate_pct.toFixed(4)}%`);
+  setEl('kpi-unknown-val', s.fraud_type_counts?.fraud_type_3 || 0);
+  setEl('kpi-amount-val', fmtD(s.amounts_total));
+  setEl('kpi-amount-sub', `Engellenen: ${fmtD(s.amounts_fraud)}`);
+  setEl('hdr-total', fmt(s.total_transactions));
+  setEl('hdr-fraud', s.fraud_total);
 
-  // Pie chart
-  const ft = stats.fraud_type_counts || {};
-  chartPie.data.datasets[0].data = [
-    ft.fraud_type_0 || 0,
-    ft.fraud_type_1 || 0,
-    ft.fraud_type_2 || 0,
-    ft.UNKNOWN_NEW_FRAUD || 0,
-  ];
+  const ft = s.fraud_type_counts || {};
+  chartPie.data.datasets[0].data = [ft.fraud_type_0||0, ft.fraud_type_1||0, ft.fraud_type_2||0, ft.fraud_type_3||0];
   chartPie.update('none');
 }
 
-function setEl(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
+function setEl(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function fmtUptime(s) { const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=Math.floor(s%60); return h>0?`${h}s ${m}d`:m>0?`${m}d ${sec}s`:`${sec}s`; }
 
-function fmtUptime(s) {
-  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = Math.floor(s%60);
-  return h > 0 ? `${h}s ${m}d` : m > 0 ? `${m}d ${sec}s` : `${sec}s`;
-}
-
-// ─────────────────────────────
-//  PIE LEGEND
-// ─────────────────────────────
-function buildPieLegend() {
-  const items = [
-    { label: 'Tip 0 — Yüksek Değerli', color: '#ef4444' },
-    { label: 'Tip 1 — Hesap Ele Geçirme', color: '#f59e0b' },
-    { label: 'Tip 2 — Mikro İşlem', color: '#eccc68' },
-    { label: 'Yeni Fraud (ZSL)', color: '#a855f7' },
-  ];
-  const leg = document.getElementById('pie-legend');
-  leg.innerHTML = items.map(i => `
-    <div class="pie-legend-item">
-      <span class="pie-legend-dot" style="background:${i.color}"></span>
-      <span>${i.label}</span>
-    </div>
-  `).join('');
-}
-
-// ─────────────────────────────
-//  SHAP
-// ─────────────────────────────
+// ── SHAP ────────────────────────────────────────────
 async function loadShap(fraudType) {
-  // Tab highlight
-  document.querySelectorAll('.shap-tab').forEach(t => {
-    t.classList.toggle('active', t.dataset.type === fraudType);
-  });
-
+  document.querySelectorAll('.shap-tab').forEach(t => t.classList.toggle('active', t.dataset.type===fraudType));
   try {
-    const res = await fetch(`${API}/api/shap/${fraudType}`);
-    const data = await res.json();
+    const data = await fetch(`${API}/api/shap/${fraudType}`).then(r=>r.json());
     renderShapChart(chartShap, data.shap_values, fraudType);
-
     const desc = data.description || {};
-    document.getElementById('shap-desc-icon').textContent = desc.icon || '📊';
-    document.getElementById('shap-desc-text').textContent = desc.title ? `${desc.title} — ${desc.description}` : fraudType;
-  } catch(e) {
-    console.warn('SHAP fetch failed, using local data');
-  }
+    setEl('shap-desc-icon', desc.icon || '📊');
+    setEl('shap-desc-text', desc.title ? `${desc.title} — ${desc.description}` : fraudType);
+    const src = document.getElementById('shap-source');
+    if (src) src.textContent = data.source === 'real_model' ? '✅ Gerçek Model SHAP' : '⚠️ Fallback';
+  } catch(e) { console.warn('SHAP yüklenemedi:', e); }
 }
 
-function renderShapChart(chartInstance, shapValues, fraudType) {
-  const sorted = Object.entries(shapValues).sort((a,b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 10);
-  const labels = sorted.map(([k]) => k);
-  const values = sorted.map(([,v]) => v);
-  const colors = values.map(v => v >= 0 ? 'rgba(239,68,68,.8)' : 'rgba(59,130,246,.8)');
-
-  chartInstance.data.labels = labels;
-  chartInstance.data.datasets = [{
-    label: 'SHAP Değeri',
-    data: values,
-    backgroundColor: colors,
-    borderColor: colors.map(c => c.replace('.8', '1')),
-    borderWidth: 1,
-    borderRadius: 4,
+function renderShapChart(instance, shapVals, fraudType) {
+  const sorted = Object.entries(shapVals).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,10);
+  const labels = sorted.map(([k])=>k);
+  const values = sorted.map(([,v])=>v);
+  const colors = values.map(v=>v>=0?'rgba(239,68,68,.8)':'rgba(59,130,246,.8)');
+  instance.data.labels = labels;
+  instance.data.datasets = [{
+    label:'SHAP',data:values,backgroundColor:colors,borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4
   }];
-  chartInstance.update();
+  instance.update();
 }
 
-// ─────────────────────────────
-//  MODAL
-// ─────────────────────────────
+// ── MODAL ─────────────────────────────────────────
 async function openModal(txn) {
-  const modal = document.getElementById('fraud-modal');
-  const meta = FRAUD_META[txn.fraud_type] || { label: txn.fraud_type, color: '#ef4444', icon: '🚨' };
+  const meta = FRAUD_META[txn.fraud_type] || {label:txn.fraud_type,color:'#ef4444',icon:'🚨'};
+  const isUnknown = txn.fraud_type === 'fraud_type_3';
 
   document.getElementById('modal-icon').textContent = meta.icon;
-  document.getElementById('modal-title').textContent = txn.fraud_type === 'UNKNOWN_NEW_FRAUD' ? '⚠️ YENİ FRAUD TİPİ TESPİT EDİLDİ!' : 'FRAUD TESPİT EDİLDİ';
+  document.getElementById('modal-title').textContent = isUnknown ? '⚠️ YENİ FRAUD TİPİ — ZERO-SHOT!' : 'FRAUD TESPİT EDİLDİ';
   document.getElementById('modal-title').style.color = meta.color;
   document.getElementById('modal-subtitle').textContent = txn.fraud_type;
   document.getElementById('modal-desc').textContent = txn.message;
@@ -368,151 +271,116 @@ async function openModal(txn) {
   document.getElementById('modal-confidence').textContent = `${(txn.confidence*100).toFixed(2)}%`;
   document.getElementById('modal-time').textContent = new Date(txn.timestamp*1000).toLocaleString('tr');
 
-  modal.classList.add('open');
+  // Gerçek model skorları
+  const flEl = document.getElementById('modal-fl-prob');
+  const fzslEl = document.getElementById('modal-fzsl-prob');
+  if (flEl) flEl.textContent = txn.fl_probability != null ? `${(txn.fl_probability*100).toFixed(2)}%` : '—';
+  if (fzslEl) fzslEl.textContent = txn.fzsl_fraud_probability != null ? `${(txn.fzsl_fraud_probability*100).toFixed(2)}%` : '—';
 
-  // Load SHAP for this transaction
+  // Similarity skorları
+  const simEl = document.getElementById('modal-sim-scores');
+  if (simEl && txn.similarity_scores && Object.keys(txn.similarity_scores).length > 0) {
+    const sorted = Object.entries(txn.similarity_scores).sort((a,b)=>b[1]-a[1]);
+    simEl.innerHTML = sorted.map(([k,v])=>{
+      const m = FRAUD_META[k] || {};
+      const pct = Math.max(0, Math.round((v+1)*50));
+      return `<div class="sim-row">
+        <span class="sim-label" style="color:${m.color||'#94a3b8'}">${k}</span>
+        <div class="sim-bar-wrap"><div class="sim-bar-fill" style="width:${pct}%;background:${m.color||'#64748b'}"></div></div>
+        <span class="sim-val">${v.toFixed(4)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('fraud-modal').classList.add('open');
+
+  // Gerçek SHAP
   try {
-    const res = await fetch(`${API}/api/shap/${txn.fraud_type}`);
-    const data = await res.json();
-
-    if (modalShapChart) modalShapChart.destroy();
-    modalShapChart = new Chart(document.getElementById('chartModalShap'), {
-      type: 'bar',
-      data: { labels: [], datasets: [] },
-      options: shapOptions()
+    const data = await fetch(`${API}/api/shap/${txn.fraud_type}`).then(r=>r.json());
+    if (chartModalShap) chartModalShap.destroy();
+    chartModalShap = new Chart(document.getElementById('chartModalShap'), {
+      type:'bar', data:{labels:[],datasets:[]}, options: shapChartOptions()
     });
-    renderShapChart(modalShapChart, data.shap_values, txn.fraud_type);
+    renderShapChart(chartModalShap, data.shap_values, txn.fraud_type);
 
-    // Top features chips
     const desc = data.description || {};
-    const features = desc.top_features || Object.keys(data.shap_values).slice(0,5);
-    document.getElementById('modal-top-features').innerHTML =
-      features.map(f => `<span class="feature-chip">${f}</span>`).join('');
+    const topF = desc.top_features || Object.keys(data.shap_values).slice(0,5);
+    document.getElementById('modal-top-features').innerHTML = topF.map(f=>`<span class="feature-chip">${f}</span>`).join('');
   } catch(e) {}
 }
 
-function closeModal() {
-  document.getElementById('fraud-modal').classList.remove('open');
-}
+function closeModal() { document.getElementById('fraud-modal').classList.remove('open'); }
 
-// ─────────────────────────────
-//  TOASTS
-// ─────────────────────────────
+// ── TOASTS ──────────────────────────────────────────
 function showToast(txn) {
   const meta = FRAUD_META[txn.fraud_type] || {};
-  const isUnknown = txn.fraud_type === 'UNKNOWN_NEW_FRAUD';
-  const container = document.getElementById('toast-container');
-
-  const toast = document.createElement('div');
-  toast.className = `toast ${isUnknown ? 'toast-unknown' : 'toast-fraud'}`;
-  toast.innerHTML = `
-    <div class="toast-title">${meta.icon || '🚨'} ${meta.label || txn.fraud_type}</div>
-    <div class="toast-body">${txn.id} · $${txn.amount.toFixed(2)} · Güven: ${(txn.confidence*100).toFixed(1)}%</div>
+  const isUnknown = txn.fraud_type === 'fraud_type_3';
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${isUnknown?'toast-unknown':'toast-fraud'}`;
+  t.innerHTML = `
+    <div class="toast-title">${meta.icon||'🚨'} ${meta.label||txn.fraud_type}</div>
+    <div class="toast-body">
+      ${txn.id} · $${txn.amount.toFixed(2)}<br>
+      FL: ${(txn.fl_probability*100).toFixed(1)}% | FZSL: ${(txn.fzsl_fraud_probability*100).toFixed(1)}%
+    </div>
   `;
-  toast.onclick = () => openModal(txn);
-  container.prepend(toast);
-  setTimeout(() => toast.remove(), isUnknown ? 8000 : 4000);
-  if (container.children.length > 5) container.lastChild.remove();
+  t.onclick = () => openModal(txn);
+  c.prepend(t);
+  setTimeout(()=>t.remove(), isUnknown ? 9000 : 4500);
+  if (c.children.length > 5) c.lastChild.remove();
 }
 
-// ─────────────────────────────
-//  UNKNOWN FRAUD BANNER
-// ─────────────────────────────
-let bannerShown = false;
-function showUnknownFraudBanner() {
-  if (bannerShown) return;
-  bannerShown = true;
-  const toast = document.createElement('div');
-  toast.className = 'toast toast-unknown';
-  toast.style.cssText = 'border-width:2px; padding: 16px 20px;';
-  toast.innerHTML = `
-    <div class="toast-title" style="font-size:15px; color:#a855f7">⚠️ YENİ FRAUD TİPİ TESPİT EDİLDİ!</div>
-    <div class="toast-body" style="color:#c4b5fd">Zero-Shot Learning aktive oldu. Eğitimde görülmemiş yeni bir dolandırıcılık paterni!</div>
-  `;
-  document.getElementById('toast-container').prepend(toast);
-  setTimeout(() => { toast.remove(); bannerShown = false; }, 10000);
-}
-
-// ─────────────────────────────
-//  COMPARISON TABLE
-// ─────────────────────────────
+// ── COMPARISON ──────────────────────────────────────
 async function loadComparison() {
   try {
-    const data = await fetch(`${API}/api/model_comparison`).then(r => r.json());
+    const data = await fetch(`${API}/api/model_comparison`).then(r=>r.json());
     renderComparison(data.models);
-  } catch (e) {
-    renderComparison([
-      { name: 'Centralized MLP', precision: 0.9289, recall: 0.9388, f1: 0.9338, unseen_detection: 0, color: '#64748b', privacy: false },
-      { name: 'Federated (FL)',  precision: 0.9373, recall: 1.0000, f1: 0.9676, unseen_detection: 0, color: '#3b82f6', privacy: true  },
-      { name: 'FL + FZSL',       precision: 0.9579, recall: 0.9715, f1: 0.9647, unseen_detection: 0.9831, color: '#8b5cf6', privacy: true },
-    ]);
-  }
+  } catch(e) {}
 }
 
 function renderComparison(models) {
-  const grid = document.getElementById('comparison-grid');
-  grid.innerHTML = models.map((m, i) => `
-    <div class="comp-row ${i === models.length-1 ? 'highlight' : ''}">
+  document.getElementById('comparison-grid').innerHTML = models.map((m,i)=>`
+    <div class="comp-row ${i===models.length-1?'highlight':''}">
       <div class="comp-name">
         <span style="color:${m.color}">${m.name}</span>
-        ${m.privacy ? '<span class="comp-badge">🔒 Gizlilik</span>' : ''}
-        ${m.unseen_detection > 0 ? '<span class="comp-badge" style="background:rgba(168,85,247,.15);color:#a855f7">Zero-Shot</span>' : ''}
+        <div style="display:flex;gap:4px">
+          ${m.privacy?'<span class="comp-badge">🔒 Gizlilik</span>':''}
+          ${m.unseen_detection>0?'<span class="comp-badge" style="background:rgba(168,85,247,.15);color:#a855f7">Zero-Shot</span>':''}
+        </div>
       </div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px">${m.description||''}</div>
       <div class="comp-metrics">
-        <div class="comp-metric">
-          <span class="comp-metric-val" style="color:${m.color}">${pct(m.f1)}</span>
-          <span class="comp-metric-label">F1</span>
-        </div>
-        <div class="comp-metric">
-          <span class="comp-metric-val">${pct(m.precision)}</span>
-          <span class="comp-metric-label">Precision</span>
-        </div>
-        <div class="comp-metric">
-          <span class="comp-metric-val" style="color:${m.unseen_detection>0?'#a855f7':'inherit'}">${m.unseen_detection > 0 ? pct(m.unseen_detection) : '—'}</span>
-          <span class="comp-metric-label">Yeni Fraud</span>
-        </div>
+        <div class="comp-metric"><span class="comp-metric-val" style="color:${m.color}">${pct(m.f1)}</span><span class="comp-metric-label">F1</span></div>
+        <div class="comp-metric"><span class="comp-metric-val">${pct(m.precision)}</span><span class="comp-metric-label">Precision</span></div>
+        <div class="comp-metric"><span class="comp-metric-val">${pct(m.recall)}</span><span class="comp-metric-label">Recall</span></div>
+        <div class="comp-metric"><span class="comp-metric-val" style="color:${m.unseen_detection>0?'#a855f7':'inherit'}">${m.unseen_detection>0?pct(m.unseen_detection):'—'}</span><span class="comp-metric-label">Yeni Fraud</span></div>
       </div>
-      <div class="comp-bar"><div class="comp-bar-fill" style="width:${m.f1*100}%; background:${m.color}"></div></div>
+      <div class="comp-bar"><div class="comp-bar-fill" style="width:${m.f1*100}%;background:${m.color}"></div></div>
     </div>
   `).join('');
 }
-
 function pct(v) { return `${(v*100).toFixed(2)}%`; }
 
-// ─────────────────────────────
-//  FRAUD TYPES LOAD
-// ─────────────────────────────
-async function loadFraudTypes() {
-  try {
-    const data = await fetch(`${API}/api/fraud_types`).then(r => r.json());
-    fraudTypes = data.fraud_types || {};
-  } catch(e) {}
-}
-
-// ─────────────────────────────
-//  ACTIONS
-// ─────────────────────────────
+// ── ACTIONS ─────────────────────────────────────────
 async function triggerNewFraud() {
   const btn = document.getElementById('btn-new-fraud');
   btn.disabled = true;
-  btn.textContent = '⏳ Simüle ediliyor…';
+  btn.textContent = '⏳ Model çalışıyor…';
   try {
-    const res = await fetch(`${API}/api/trigger_new_fraud`, { method: 'POST' });
-    const data = await res.json();
+    const data = await fetch(`${API}/api/trigger_new_fraud`, {method:'POST'}).then(r=>r.json());
     handleTransaction(data.transaction);
-    showUnknownFraudBanner();
-    openModal(data.transaction);
+    setTimeout(() => openModal(data.transaction), 300);
   } catch(e) {
-    alert('API bağlantısı kurulamadı. Backend çalışıyor mu?\nuvicorn backend.dashboard_api:app --port 8001');
+    alert('API bağlantısı kurulamadı.\nTerminalde: python -m uvicorn backend.dashboard_api:app --port 8001 --reload');
   }
-  setTimeout(() => { btn.disabled = false; btn.textContent = '⚠️ YENİ FRAUD TİPİ SİMÜLE ET'; }, 2000);
+  setTimeout(()=>{ btn.disabled=false; btn.textContent='⚠️ YENİ FRAUD TİPİ SİMÜLE ET'; }, 2000);
 }
 
 async function resetStats() {
-  await fetch(`${API}/api/reset`, { method: 'POST' }).catch(() => {});
+  await fetch(`${API}/api/reset`, {method:'POST'}).catch(()=>{});
   document.getElementById('feed-container').innerHTML = '<div class="feed-empty"><span class="feed-empty-icon">⏳</span><span>Sıfırlandı…</span></div>';
   document.getElementById('alerts-container').innerHTML = '<div class="feed-empty"><span class="feed-empty-icon">✅</span><span>Henüz fraud tespit edilmedi</span></div>';
   document.getElementById('alert-count-badge').textContent = '0';
-  flowNormal.fill(0); flowFraud.fill(0);
-  chartFlow.update('none');
+  flowNormal.fill(0); flowFraud.fill(0); chartFlow.update('none');
 }

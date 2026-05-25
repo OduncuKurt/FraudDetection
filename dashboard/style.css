@@ -261,6 +261,22 @@ body {
 .toast-title { font-weight: 700; margin-bottom: 4px; }
 .toast-body { font-size: 11px; color: var(--text2); }
 
+/* SIMILARITY SCORES (Modal) */
+.modal-sim-scores { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; padding:12px; background:rgba(255,255,255,.02); border-radius:10px; border:1px solid var(--panel-border); }
+.sim-row { display:grid; grid-template-columns:160px 1fr 60px; align-items:center; gap:8px; }
+.sim-label { font-size:11px; font-family:'JetBrains Mono',monospace; font-weight:600; }
+.sim-bar-wrap { height:6px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden; }
+.sim-bar-fill { height:100%; border-radius:3px; transition:width .6s ease; }
+.sim-val { font-size:11px; font-family:'JetBrains Mono',monospace; text-align:right; color:var(--text2); }
+
+/* SIM CHIPS (Alert) */
+.sim-scores { display:flex; flex-wrap:wrap; gap:4px; margin:4px 0; }
+.sim-chip { font-size:10px; padding:2px 6px; border-radius:4px; border:1px solid; font-family:'JetBrains Mono',monospace; color:var(--text2); }
+
+/* FL PROB BAR (Feed) */
+.fl-bar { display:inline-block; width:40px; height:6px; background:rgba(255,255,255,.06); border-radius:3px; overflow:hidden; vertical-align:middle; }
+.fl-bar span { display:block; height:100%; border-radius:3px; }
+
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
