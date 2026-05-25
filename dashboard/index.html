@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FraudDetection System — Live Dashboard</title>
+  <meta name="description" content="Federated Zero-Shot Learning tabanlı canlı dolandırıcılık tespit sistemi gösterge paneli." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ──────────────────────────────── HEADER ──────────────────────────────── -->
+<header id="main-header">
+  <div class="header-left">
+    <div class="logo-badge">
+      <span class="logo-icon">🏦</span>
+      <div>
+        <span class="logo-title">FraudDetection</span>
+        <span class="logo-sub">FZSL Intelligence System v2.0</span>
+      </div>
+    </div>
+    <div class="header-status" id="header-status">
+      <span class="pulse-dot"></span>
+      <span id="status-text">Bağlanıyor...</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-metric">
+      <span class="hm-label">Toplam İşlem</span>
+      <span class="hm-value" id="hdr-total">—</span>
+    </div>
+    <div class="header-metric fraud">
+      <span class="hm-label">Fraud Tespit</span>
+      <span class="hm-value" id="hdr-fraud">—</span>
+    </div>
+    <div class="header-metric success">
+      <span class="hm-label">F1 Skoru</span>
+      <span class="hm-value">96.47%</span>
+    </div>
+    <button class="btn-danger" id="btn-new-fraud" onclick="triggerNewFraud()">
+      ⚠️ YENİ FRAUD TİPİ SİMÜLE ET
+    </button>
+    <button class="btn-ghost" onclick="resetStats()">↺ Sıfırla</button>
+  </div>
+</header>
+
+<!-- ──────────────────────────────── MAIN GRID ──────────────────────────────── -->
+<main class="dashboard-grid">
+
+  <!-- ── KPI CARDS ── -->
+  <section class="kpi-row" id="kpi-row">
+    <div class="kpi-card" id="kpi-total">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpi-total-val">0</span>
+        <span class="kpi-label">Toplam İşlem</span>
+        <span class="kpi-sub" id="kpi-total-sub">Simülasyon başlatılıyor…</span>
+      </div>
+    </div>
+    <div class="kpi-card fraud-card" id="kpi-fraud">
+      <div class="kpi-icon">🚨</div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpi-fraud-val">0</span>
+        <span class="kpi-label">Fraud Tespit</span>
+        <span class="kpi-sub" id="kpi-fraud-sub">Oran: 0.00%</span>
+      </div>
+    </div>
+    <div class="kpi-card unknown-card" id="kpi-unknown">
+      <div class="kpi-icon">🔮</div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpi-unknown-val">0</span>
+        <span class="kpi-label">Zero-Shot Tespit</span>
+        <span class="kpi-sub">Görülmemiş fraud tipi</span>
+      </div>
+    </div>
+    <div class="kpi-card success-card" id="kpi-amount">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpi-amount-val">$0</span>
+        <span class="kpi-label">İşlem Hacmi</span>
+        <span class="kpi-sub" id="kpi-amount-sub">Kurtarılan: $0</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LEFT: LIVE TRANSACTION FEED ── -->
+  <section class="panel panel-feed" id="panel-feed">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">⚡</span>
+        Canlı İşlem Akışı
+        <span class="live-badge">CANLI</span>
+      </h2>
+      <span class="panel-sub" id="feed-rate">1 işlem/sn</span>
+    </div>
+    <div class="feed-container" id="feed-container">
+      <div class="feed-empty">
+        <span class="feed-empty-icon">⏳</span>
+        <span>İşlemler yükleniyor…</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── RIGHT: FRAUD ALERTS ── -->
+  <section class="panel panel-alerts" id="panel-alerts">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🚨</span>
+        Fraud Alert Paneli
+        <span class="alert-count-badge" id="alert-count-badge">0</span>
+      </h2>
+    </div>
+    <div class="alerts-container" id="alerts-container">
+      <div class="feed-empty">
+        <span class="feed-empty-icon">✅</span>
+        <span>Henüz fraud tespit edilmedi</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── CHART: TRANSACTION FLOW ── -->
+  <section class="panel panel-chart" id="panel-chart">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">📈</span>
+        İşlem Akışı (Gerçek Zamanlı)
+      </h2>
+      <div class="chart-legend">
+        <span class="legend-dot normal"></span><span>Normal</span>
+        <span class="legend-dot fraud"></span><span>Fraud</span>
+      </div>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="chartFlow" height="120"></canvas>
+    </div>
+  </section>
+
+  <!-- ── CHART: FRAUD TYPE PIE ── -->
+  <section class="panel panel-pie" id="panel-pie">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🍩</span>
+        Fraud Tip Dağılımı
+      </h2>
+    </div>
+    <div class="chart-wrapper" style="max-height:200px">
+      <canvas id="chartPie" height="180"></canvas>
+    </div>
+    <div class="pie-legend" id="pie-legend"></div>
+  </section>
+
+  <!-- ── XAI SHAP PANEL ── -->
+  <section class="panel panel-shap" id="panel-shap">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🧠</span>
+        XAI — SHAP Açıklaması
+      </h2>
+      <div class="shap-tabs" id="shap-tabs">
+        <button class="shap-tab active" data-type="fraud_type_0" onclick="loadShap('fraud_type_0')">Tip 0</button>
+        <button class="shap-tab" data-type="fraud_type_1" onclick="loadShap('fraud_type_1')">Tip 1</button>
+        <button class="shap-tab" data-type="fraud_type_2" onclick="loadShap('fraud_type_2')">Tip 2</button>
+        <button class="shap-tab shap-tab-unknown" data-type="UNKNOWN_NEW_FRAUD" onclick="loadShap('UNKNOWN_NEW_FRAUD')">⚠️ Yeni</button>
+      </div>
+    </div>
+    <div class="shap-desc" id="shap-desc">
+      <span class="shap-desc-icon">💳</span>
+      <span id="shap-desc-text">Yüksek Değerli Dolandırıcılık — Kart kopyalama veya büyük ölçekli çevrimiçi fraud</span>
+    </div>
+    <div class="chart-wrapper" style="max-height:220px">
+      <canvas id="chartShap" height="200"></canvas>
+    </div>
+  </section>
+
+  <!-- ── MODEL COMPARISON TABLE ── -->
+  <section class="panel panel-comparison" id="panel-comparison">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">📋</span>
+        Model Karşılaştırması
+      </h2>
+    </div>
+    <div class="comparison-grid" id="comparison-grid">
+      <!-- JS ile doldurulacak -->
+    </div>
+  </section>
+
+  <!-- ── MODEL METRICS CHARTS ── -->
+  <section class="panel panel-metrics" id="panel-metrics">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">📊</span>
+        Performans Metrikleri
+      </h2>
+    </div>
+    <div class="chart-wrapper" style="max-height:220px">
+      <canvas id="chartMetrics" height="200"></canvas>
+    </div>
+  </section>
+
+</main>
+
+<!-- ──────────────────── FRAUD ALERT MODAL ──────────────────── -->
+<div class="modal-overlay" id="fraud-modal" onclick="closeModal()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+
+    <div class="modal-header">
+      <div class="modal-fraud-icon" id="modal-icon">🚨</div>
+      <div>
+        <h3 class="modal-title" id="modal-title">FRAUD TESPİT EDİLDİ</h3>
+        <p class="modal-subtitle" id="modal-subtitle">fraud_type_0</p>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <div class="modal-desc" id="modal-desc">Açıklama yükleniyor…</div>
+
+      <div class="modal-meta-grid">
+        <div class="modal-meta-item">
+          <span class="meta-label">İşlem ID</span>
+          <span class="meta-value mono" id="modal-txn-id">—</span>
+        </div>
+        <div class="modal-meta-item">
+          <span class="meta-label">Tutar</span>
+          <span class="meta-value" id="modal-amount">—</span>
+        </div>
+        <div class="modal-meta-item">
+          <span class="meta-label">Güven Skoru</span>
+          <span class="meta-value" id="modal-confidence">—</span>
+        </div>
+        <div class="modal-meta-item">
+          <span class="meta-label">Zaman</span>
+          <span class="meta-value mono" id="modal-time">—</span>
+        </div>
+      </div>
+
+      <h4 class="modal-shap-title">🔍 SHAP Özellik Önemi</h4>
+      <div class="chart-wrapper" style="max-height:200px">
+        <canvas id="chartModalShap" height="180"></canvas>
+      </div>
+
+      <div class="modal-top-features" id="modal-top-features"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────── NEW FRAUD TOAST ──────────────────── -->
+<div class="toast-container" id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
