@@ -245,13 +245,17 @@ async function loadShap(fraudType) {
 }
 
 function renderShapChart(instance, shapVals, fraudType) {
+  if (!shapVals || Object.keys(shapVals).length === 0) return;
   const sorted = Object.entries(shapVals).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,10);
+  // Normalize: GradientExplainer büyük değerler verebilir, görsel için normalize et
+  const maxAbs = Math.max(...sorted.map(([,v])=>Math.abs(v)), 0.001);
   const labels = sorted.map(([k])=>k);
-  const values = sorted.map(([,v])=>v);
+  const values = sorted.map(([,v])=> maxAbs > 1 ? v / maxAbs : v); // sadece büyükse normalize et
   const colors = values.map(v=>v>=0?'rgba(239,68,68,.8)':'rgba(59,130,246,.8)');
   instance.data.labels = labels;
   instance.data.datasets = [{
-    label:'SHAP',data:values,backgroundColor:colors,borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4
+    label:'SHAP (normalize)',data:values,backgroundColor:colors,
+    borderColor:colors.map(c=>c.replace('.8','1')),borderWidth:1,borderRadius:4
   }];
   instance.update();
 }
@@ -265,19 +269,48 @@ async function openModal(txn) {
   document.getElementById('modal-title').textContent = isUnknown ? '⚠️ YENİ FRAUD TİPİ — ZERO-SHOT!' : 'FRAUD TESPİT EDİLDİ';
   document.getElementById('modal-title').style.color = meta.color;
   document.getElementById('modal-subtitle').textContent = txn.fraud_type;
-  document.getElementById('modal-desc').textContent = txn.message;
+
+  // Kısa verdict (üstte)
+  document.getElementById('modal-desc').textContent = txn.message || '';
+
+  // Türkçe risk gerekçeleri (human_explanation)
+  const hExp = txn.human_explanation;
+  const hEl = document.getElementById('modal-human-exp');
+  const bEl = document.getElementById('modal-bullets');
+  const riskColors = {'KRİTİK':'#ef4444','KRİTİK — YENİ TİP':'#a855f7','YÜKSEK':'#f59e0b','ORTA':'#eab308'};
+  if (hExp && hExp.bullets && hExp.bullets.length > 0) {
+    // **bold** → <strong> dönüşümü
+    const renderBullet = t => t.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e2e8f0">$1</strong>');
+    bEl.innerHTML = hExp.bullets.map(b => `<li>${renderBullet(b)}</li>`).join('');
+    hEl.style.display = 'block';
+    hEl.style.borderColor = riskColors[hExp.risk_level] || '#6366f1';
+    // SHAP kaynak badge
+    const titleEl = hEl.querySelector('.human-exp-title');
+    if (titleEl) {
+      const badge = hExp.shap_used
+        ? '<span style="font-size:10px;background:rgba(16,185,129,.15);color:#10b981;border:1px solid rgba(16,185,129,.3);padding:2px 6px;border-radius:4px;margin-left:8px;font-weight:400">✅ Gerçek SHAP bazlı</span>'
+        : '<span style="font-size:10px;background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.3);padding:2px 6px;border-radius:4px;margin-left:8px;font-weight:400">📊 Metrik bazlı (SHAP hesaplanıyor)</span>';
+      titleEl.innerHTML = '🔎 Neden Fraud? — Risk Gerekçeleri' + badge;
+    }
+  } else if (!hExp) {
+    // Eski cache'ten gelen transaction — human_explanation yok
+    bEl.innerHTML = `<li>Bu alert daha önceki bir akıştan. Yeni alertlere tıklayarak detaylı Türkçe açıklama görebilirsiniz.</li>`;
+    hEl.style.display = 'block';
+    hEl.style.borderColor = '#334155';
+  } else {
+    hEl.style.display = 'none';
+  }
   document.getElementById('modal-txn-id').textContent = txn.id;
   document.getElementById('modal-amount').textContent = `$${txn.amount.toFixed(2)}`;
   document.getElementById('modal-confidence').textContent = `${(txn.confidence*100).toFixed(2)}%`;
   document.getElementById('modal-time').textContent = new Date(txn.timestamp*1000).toLocaleString('tr');
 
-  // Gerçek model skorları
   const flEl = document.getElementById('modal-fl-prob');
   const fzslEl = document.getElementById('modal-fzsl-prob');
   if (flEl) flEl.textContent = txn.fl_probability != null ? `${(txn.fl_probability*100).toFixed(2)}%` : '—';
   if (fzslEl) fzslEl.textContent = txn.fzsl_fraud_probability != null ? `${(txn.fzsl_fraud_probability*100).toFixed(2)}%` : '—';
 
-  // Similarity skorları
+  // Similarity skorları (FZSL çıktısı — tüm sınıflarla karşılaştırma)
   const simEl = document.getElementById('modal-sim-scores');
   if (simEl && txn.similarity_scores && Object.keys(txn.similarity_scores).length > 0) {
     const sorted = Object.entries(txn.similarity_scores).sort((a,b)=>b[1]-a[1]);
@@ -290,23 +323,72 @@ async function openModal(txn) {
         <span class="sim-val">${v.toFixed(4)}</span>
       </div>`;
     }).join('');
+  } else if (simEl) {
+    simEl.innerHTML = '<div style="font-size:11px;color:#64748b;padding:8px">FZSL similarity skorları hesaplanıyor…</div>';
   }
 
   document.getElementById('fraud-modal').classList.add('open');
 
-  // Gerçek SHAP
+  // SHAP: önce txn içindeki per-transaction SHAP'a bak (gerçek GradientExplainer)
+  // yoksa API'dan tip bazlı çek
   try {
-    const data = await fetch(`${API}/api/shap/${txn.fraud_type}`).then(r=>r.json());
+    let shapVals = txn.shap_values; // Per-transaction gerçek SHAP (hazırsa)
+    let shapSource = txn.shap_ready ? '✅ Gerçek SHAP (bu işlem)' : null;
+
+    if (!shapVals || Object.keys(shapVals).length === 0) {
+      const data = await fetch(`${API}/api/shap/${txn.fraud_type}`).then(r=>r.json());
+      shapVals = data.shap_values;
+      shapSource = data.source === 'real_gradient_shap' ? '✅ Gerçek SHAP (tip örneği)' : '⚠️ Şablon (model yüklü değil)';
+    }
+
+    // SHAP kaynak bilgisi
+    const srcEl = document.getElementById('shap-modal-source');
+    if (srcEl && shapSource) srcEl.textContent = shapSource;
+
     if (chartModalShap) chartModalShap.destroy();
     chartModalShap = new Chart(document.getElementById('chartModalShap'), {
       type:'bar', data:{labels:[],datasets:[]}, options: shapChartOptions()
     });
-    renderShapChart(chartModalShap, data.shap_values, txn.fraud_type);
+    renderShapChart(chartModalShap, shapVals, txn.fraud_type);
 
-    const desc = data.description || {};
-    const topF = desc.top_features || Object.keys(data.shap_values).slice(0,5);
-    document.getElementById('modal-top-features').innerHTML = topF.map(f=>`<span class="feature-chip">${f}</span>`).join('');
-  } catch(e) {}
+    const info = FRAUD_INFO[txn.fraud_type] || {};
+    const topF = info.top_features || Object.keys(shapVals).slice(0,5);
+    document.getElementById('modal-top-features').innerHTML =
+      topF.map(f=>`<span class="feature-chip">${f}</span>`).join('') +
+      `<span class="feature-chip" style="background:rgba(16,185,129,.1);color:#10b981;border-color:rgba(16,185,129,.3)">Küme ort. $${(info.cluster_avg_amount||0).toFixed(0)}</span>`;
+  } catch(e) { console.warn('SHAP modal hatası:', e); }
+
+  // Counterfactual açıklama — /api/explain/{txn_id}
+  const cfEl = document.getElementById('modal-counterfactual');
+  const cfBodyEl = document.getElementById('modal-cf-body');
+  if (cfEl && cfBodyEl) {
+    cfEl.style.display = 'none';
+    try {
+      const explain = await fetch(`${API}/api/explain/${encodeURIComponent(txn.id)}`).then(r=>r.json());
+      const cf = explain.counterfactual;
+      if (cf && cf.changes && cf.changes.length > 0) {
+        const renderBullet = t => t.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#e2e8f0">$1</strong>');
+        cfBodyEl.innerHTML = `
+          <div class="cf-verdict ${cf.success?'cf-success':'cf-fail'}">${cf.verdict}</div>
+          <div class="cf-table">
+            <div class="cf-header"><span>Özellik</span><span>Mevcut Değer</span><span>Gerekli Değer</span><span>Değişim</span></div>
+            ${cf.changes.slice(0,6).map(c=>`
+              <div class="cf-row">
+                <span class="cf-feat">${c.feature}</span>
+                <span class="cf-val">${c.original}</span>
+                <span class="cf-val">${c.counterfactual}</span>
+                <span class="cf-delta ${c.change>0?'pos':'neg'}">${c.change>0?'+':''}${c.change.toFixed(3)}</span>
+              </div>`).join('')}
+          </div>
+          <div style="font-size:10px;color:#475569;margin-top:8px">
+            * Counterfactual: Gradient descent ile hesaplanmış minimum değişim. 
+            Orijinal fraud olasılığı %${(cf.original_prob*100).toFixed(1)} → Hedef olasılık %${(cf.counterfactual_prob*100).toFixed(1)}.
+          </div>
+        `;
+        cfEl.style.display = 'block';
+      }
+    } catch(e) { /* opsiyonel, hata olsa da sorun değil */ }
+  }
 }
 
 function closeModal() { document.getElementById('fraud-modal').classList.remove('open'); }

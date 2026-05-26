@@ -220,6 +220,12 @@
     <div class="modal-body">
       <div class="modal-desc" id="modal-desc">Açıklama yükleniyor…</div>
 
+      <!-- Türkçe risk gerekçeleri (human_explanation.bullets) -->
+      <div id="modal-human-exp" class="modal-human-exp" style="display:none">
+        <div class="human-exp-title">🔎 Neden Fraud? — Risk Gerekçeleri</div>
+        <ul id="modal-bullets" class="modal-bullets"></ul>
+      </div>
+
       <div class="modal-meta-grid">
         <div class="modal-meta-item">
           <span class="meta-label">İşlem ID</span>
@@ -250,7 +256,13 @@
       <h4 class="modal-shap-title">📐 FZSL Benzerlik Skorları (Tüm Sınıflar)</h4>
       <div id="modal-sim-scores" class="modal-sim-scores"></div>
 
-      <h4 class="modal-shap-title" style="margin-top:16px">🔍 SHAP — Hangi Özellik Neden Etkiledi?</h4>
+      <h4 class="modal-shap-title" style="margin-top:16px">🔍 SHAP — Hangi Özellik Neden Etkiledi?
+        <span id="shap-modal-source" style="font-size:10px;font-weight:400;margin-left:8px;color:#64748b"></span>
+      </h4>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,.02);border-radius:6px">
+        ℹ️ SHAP değerleri FL modelinin (binary) kararını açıklar. Kırmızı = fraud ihtimalini artırıyor, Mavi = azaltıyor.
+        Sınıflandırma <b>V1-V28 PCA özelliklerine</b> dayanır — tutar tek başına belirleyici değildir.
+      </div>
       <div class="chart-wrapper" style="max-height:200px">
         <canvas id="chartModalShap" height="180"></canvas>
       </div>
