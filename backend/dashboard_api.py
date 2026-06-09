@@ -126,35 +126,35 @@ async def startup_event():
     if os.path.exists(pkl_path):
         try:
             from src.inference import FraudAnalyzer
-            print("[API] Gerçek model yükleniyor...")
+            print("[API] Gercek model yukleniyor...")
             _analyzer = FraudAnalyzer(checkpoint=pkl_path)
             _model_loaded = True
             _stats["model_metrics"]["fl_threshold"] = float(_analyzer.system.fl_threshold)
-            print(f"[API] ✅ Model hazır. FL threshold={_analyzer.system.fl_threshold:.4f}")
+            print(f"[API] OK - Model hazir. FL threshold={_analyzer.system.fl_threshold:.4f}")
 
-            # XAIEngine başlat
+            # XAIEngine baslat
             _xai_engine = XAIEngine(
                 fl_model=_analyzer.system.fl_model,
                 scaler=_analyzer.system.scaler,
                 feature_names=_analyzer.system.feature_names,
                 background_data=_analyzer.system.shap_background,
             )
-            print("[API] ✅ XAI Engine hazır (GradientExplainer + Counterfactual).")
+            print("[API] OK - XAI Engine hazir (GradientExplainer + Counterfactual).")
         except Exception as e:
-            print(f"[HATA] Model yüklenemedi: {e}")
+            print(f"[HATA] Model yuklenemedi: {e}")
 
     csv_path = os.path.join("data", "creditcard.csv")
     if os.path.exists(csv_path):
-        print("[API] creditcard.csv yükleniyor...")
+        print("[API] creditcard.csv yukleniyor...")
         raw = pd.read_csv(csv_path)
-        # Gerçekçi dağılım: fraud %0.17 → her ~600 normalden 1 fraud
+        # Gercekci dagilim: fraud %0.17 → her ~600 normalden 1 fraud
         fraud_df  = raw[raw["Class"] == 1].copy()          # 492 fraud
         normal_df = raw[raw["Class"] == 0].sample(n=5000, random_state=42)
         _df = pd.concat([normal_df, fraud_df]).sample(frac=1, random_state=0).reset_index(drop=True)
-        print(f"[API] ✅ {len(_df)} işlem hazır ({len(fraud_df)} fraud, {len(normal_df)} normal).")
+        print(f"[API] OK - {len(_df)} islem hazir ({len(fraud_df)} fraud, {len(normal_df)} normal).")
     
-    # GxI SHAP her işlem için anlık hesaplanıyor (arka plan thread gerekmiyor)
-    print("[API] Hazır!")
+    # GxI SHAP her islem icin anlik hesaplaniyor (arka plan thread gerekmiyor)
+    print("[API] Hazir!")
 
 
 

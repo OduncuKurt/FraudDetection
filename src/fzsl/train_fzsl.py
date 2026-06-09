@@ -415,7 +415,7 @@ def main():
     csv_path = "data/creditcard.csv"
     device = "cpu"
     proj_dim = 128
-    epochs = 2
+    epochs = 30
     lr = 1e-3
     batch_size = 256
     os.makedirs("outputs", exist_ok=True)

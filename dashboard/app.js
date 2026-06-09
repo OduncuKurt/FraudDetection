@@ -115,9 +115,10 @@ async function poll() {
     handleTransaction(txn);
     updateStats(stats);
     document.querySelector('.pulse-dot').style.background = '#10b981';
-    setEl('status-text', txn.model_used === 'REAL — FL + FZSL' ? '🟢 Gerçek Model Aktif' : '🟡 Simülasyon Modu');
+    const isReal = txn.model_used && txn.model_used.includes('REAL');
+    setEl('status-text', isReal ? 'Gercek Model Aktif' : 'Simulasyon Modu');
   } catch(e) {
-    setEl('status-text', '🔴 Bağlantı hatası…');
+    setEl('status-text', 'Baglanti hatasi...');
     document.querySelector('.pulse-dot').style.background = '#ef4444';
   }
 }
