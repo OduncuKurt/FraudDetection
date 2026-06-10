@@ -118,7 +118,7 @@ _fraud_alerts: deque = deque(maxlen=50)
 # ─── Startup ──────────────────────────────────────────────────────────────────
 @app.on_event("startup")
 async def startup_event():
-    global _model_loaded, _analyzer, _df
+    global _model_loaded, _analyzer, _df, _xai_engine
 
     print("[API] Başlatılıyor...")
 
@@ -494,8 +494,28 @@ async def trigger_new_fraud():
     result["amount"]    = amount
     result["true_label"] = 1
     result["is_fraud"]  = True
-    result["shap_values"] = None
-    result["shap_ready"] = False
+    
+    # Calculate SHAP and human explanation
+    feat_arr = np.array([feat[f] for f in _analyzer.system.feature_names], dtype=np.float32).reshape(1, -1)
+    feat_scaled = _analyzer.system.scaler.transform(feat_arr)
+    shap_exp = _xai_engine.shap_values(feat_scaled) if _xai_engine else None
+    
+    feat_vals_scaled = {f: float(feat_scaled.flatten()[i]) for i, f in enumerate(_analyzer.system.feature_names)}
+    h_exp = build_human_explanation(
+        shap_values=shap_exp,
+        feature_values=feat_vals_scaled,
+        fraud_type=result["fraud_type"],
+        amount=amount,
+        time_sec=0, # Time is not reliably kept in this flow
+        fl_probability=result["fl_probability"],
+        fzsl_fraud_prob=result["fzsl_fraud_probability"],
+        confidence=result["confidence"],
+        similarity_scores=result["similarity_scores"],
+    )
+
+    result["shap_values"] = shap_exp
+    result["shap_ready"] = shap_exp is not None
+    result["human_explanation"] = h_exp
 
     if found_real:
         result["message"] = (

@@ -1,5 +1,5 @@
 // FraudDetection Dashboard — app.js (Gerçek Model Entegrasyonu)
-const API = 'http://localhost:8001';
+const API = '';
 const POLL_MS = 1000;
 
 const FRAUD_META = {
@@ -339,7 +339,7 @@ async function openModal(txn) {
     if (!shapVals || Object.keys(shapVals).length === 0) {
       const data = await fetch(`${API}/api/shap/${txn.fraud_type}`).then(r=>r.json());
       shapVals = data.shap_values;
-      shapSource = data.source === 'real_gradient_shap' ? '✅ Gerçek SHAP (tip örneği)' : '⚠️ Şablon (model yüklü değil)';
+      shapSource = data.source === 'gradient_x_input' ? '✅ Gerçek SHAP (tip örneği)' : '⚠️ Şablon (model yüklü değil)';
     }
 
     // SHAP kaynak bilgisi

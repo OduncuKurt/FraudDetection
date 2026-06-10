@@ -392,9 +392,20 @@ class FraudDetectionSystem:
         results = []
         for i in range(len(X_scaled)):
             ftype = fzsl_types[i]
-            # Nihai karar: FL OR FZSL
-            is_fraud = bool(fl_proba[i] >= self.fl_threshold) or (ftype != "normal")
-            conf     = float(np.max(sims[i]))
+            zsl_prob = float(fzsl_proba[i])
+            fl_prob = float(fl_proba[i])
+            
+            # Sadece FL fraud diyorsa (threshold'u gectiyse) veya ZSL cok eminse (> 0.7902) fraud say
+            is_fraud = bool(fl_prob >= self.fl_threshold) or (zsl_prob >= 0.7902)
+
+            if not is_fraud:
+                ftype = "normal"
+            elif ftype == "normal":
+                # Eger FL fraud diyorsa ama ZSL normal diyorsa, en yuksek fraud tipini al
+                fraud_sims = {c: sims[i][j] for j, c in enumerate(self.class_order) if c != "normal"}
+                ftype = max(fraud_sims, key=fraud_sims.get)
+
+            conf = float(np.max(sims[i]))
 
             results.append({
                 "is_fraud":               is_fraud,
