@@ -44,8 +44,7 @@ class XAIEngine:
             x_t = torch.tensor(x_arr, dtype=torch.float32,
                                device=self.device, requires_grad=True)
             logit = self.model(x_t.unsqueeze(0))
-            prob = torch.sigmoid(logit)
-            prob.squeeze().backward()
+            logit.squeeze().backward()
 
             grads = x_t.grad.detach().cpu().numpy()
             # Signed gradient × input
