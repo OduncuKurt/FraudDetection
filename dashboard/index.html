@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FraudDetection System — Live Dashboard</title>
-  <meta name="description" content="Federated Zero-Shot Learning tabanlı canlı dolandırıcılık tespit sistemi gösterge paneli." />
+  <title>FraudShield — Real-Time Fraud Detection Dashboard</title>
+  <meta name="description" content="Federated Zero-Shot Learning based real-time fraud detection dashboard with XAI, Differential Privacy monitoring, and Concept Drift detection." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -19,32 +19,32 @@
     <div class="logo-badge">
       <span class="logo-icon">🏦</span>
       <div>
-        <span class="logo-title">FraudDetection</span>
-        <span class="logo-sub">FZSL Intelligence System v2.0</span>
+        <span class="logo-title">FraudShield</span>
+        <span class="logo-sub">FL + FZSL Intelligence System v3.0</span>
       </div>
     </div>
     <div class="header-status" id="header-status">
       <span class="pulse-dot"></span>
-      <span id="status-text">Bağlanıyor...</span>
+      <span id="status-text">Connecting…</span>
     </div>
   </div>
   <div class="header-right">
     <div class="header-metric">
-      <span class="hm-label">Toplam İşlem</span>
+      <span class="hm-label">Total Transactions</span>
       <span class="hm-value" id="hdr-total">—</span>
     </div>
     <div class="header-metric fraud">
-      <span class="hm-label">Fraud Tespit</span>
+      <span class="hm-label">Fraud Detected</span>
       <span class="hm-value" id="hdr-fraud">—</span>
     </div>
     <div class="header-metric success">
-      <span class="hm-label">F1 Skoru</span>
+      <span class="hm-label">F1 Score</span>
       <span class="hm-value">96.47%</span>
     </div>
     <button class="btn-danger" id="btn-new-fraud" onclick="triggerNewFraud()">
-      ⚠️ YENİ FRAUD TİPİ SİMÜLE ET
+      ⚠️ SIMULATE NEW FRAUD TYPE
     </button>
-    <button class="btn-ghost" onclick="resetStats()">↺ Sıfırla</button>
+    <button class="btn-ghost" onclick="resetStats()">↺ Reset</button>
   </div>
 </header>
 
@@ -57,32 +57,41 @@
       <div class="kpi-icon">📊</div>
       <div class="kpi-body">
         <span class="kpi-value" id="kpi-total-val">0</span>
-        <span class="kpi-label">Toplam İşlem</span>
-        <span class="kpi-sub" id="kpi-total-sub">Simülasyon başlatılıyor…</span>
+        <span class="kpi-label">Total Transactions</span>
+        <span class="kpi-sub" id="kpi-total-sub">Simulation starting…</span>
       </div>
     </div>
     <div class="kpi-card fraud-card" id="kpi-fraud">
       <div class="kpi-icon">🚨</div>
       <div class="kpi-body">
         <span class="kpi-value" id="kpi-fraud-val">0</span>
-        <span class="kpi-label">Fraud Tespit</span>
-        <span class="kpi-sub" id="kpi-fraud-sub">Oran: 0.00%</span>
+        <span class="kpi-label">Fraud Detected</span>
+        <span class="kpi-sub" id="kpi-fraud-sub">Rate: 0.00%</span>
       </div>
     </div>
     <div class="kpi-card unknown-card" id="kpi-unknown">
       <div class="kpi-icon">🔮</div>
       <div class="kpi-body">
         <span class="kpi-value" id="kpi-unknown-val">0</span>
-        <span class="kpi-label">Zero-Shot Tespit</span>
-        <span class="kpi-sub">Görülmemiş fraud tipi</span>
+        <span class="kpi-label">Zero-Shot Detected</span>
+        <span class="kpi-sub">Unseen fraud pattern</span>
       </div>
     </div>
     <div class="kpi-card success-card" id="kpi-amount">
       <div class="kpi-icon">💰</div>
       <div class="kpi-body">
         <span class="kpi-value" id="kpi-amount-val">$0</span>
-        <span class="kpi-label">İşlem Hacmi</span>
-        <span class="kpi-sub" id="kpi-amount-sub">Kurtarılan: $0</span>
+        <span class="kpi-label">Transaction Volume</span>
+        <span class="kpi-sub" id="kpi-amount-sub">Blocked: $0</span>
+      </div>
+    </div>
+    <!-- Privacy Budget KPI -->
+    <div class="kpi-card privacy-card" id="kpi-privacy">
+      <div class="kpi-icon">🔐</div>
+      <div class="kpi-body">
+        <span class="kpi-value" id="kpi-epsilon-val">ε=∞</span>
+        <span class="kpi-label">Privacy Budget</span>
+        <span class="kpi-sub" id="kpi-epsilon-sub">Differential Privacy</span>
       </div>
     </div>
   </section>
@@ -92,15 +101,15 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">⚡</span>
-        Canlı İşlem Akışı
-        <span class="live-badge">CANLI</span>
+        Live Transaction Feed
+        <span class="live-badge">LIVE</span>
       </h2>
-      <span class="panel-sub" id="feed-rate">1 işlem/sn</span>
+      <span class="panel-sub" id="feed-rate">1 tx/sec</span>
     </div>
     <div class="feed-container" id="feed-container">
       <div class="feed-empty">
         <span class="feed-empty-icon">⏳</span>
-        <span>İşlemler yükleniyor…</span>
+        <span>Loading transactions…</span>
       </div>
     </div>
   </section>
@@ -110,14 +119,14 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">🚨</span>
-        Fraud Alert Paneli
+        Fraud Alert Panel
         <span class="alert-count-badge" id="alert-count-badge">0</span>
       </h2>
     </div>
     <div class="alerts-container" id="alerts-container">
       <div class="feed-empty">
         <span class="feed-empty-icon">✅</span>
-        <span>Henüz fraud tespit edilmedi</span>
+        <span>No fraud detected yet</span>
       </div>
     </div>
   </section>
@@ -127,7 +136,7 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">📈</span>
-        İşlem Akışı (Gerçek Zamanlı)
+        Transaction Flow (Real-Time)
       </h2>
       <div class="chart-legend">
         <span class="legend-dot normal"></span><span>Normal</span>
@@ -144,7 +153,7 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">🍩</span>
-        Fraud Tip Dağılımı
+        Fraud Type Distribution
       </h2>
     </div>
     <div class="chart-wrapper" style="max-height:200px">
@@ -158,22 +167,180 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">🧠</span>
-        XAI — SHAP Açıklaması
+        XAI — SHAP Explanation
       </h2>
       <div class="shap-tabs" id="shap-tabs">
-        <button class="shap-tab active" data-type="fraud_type_0" onclick="loadShap('fraud_type_0')">💳 CNP / Kart Kopyalama</button>
-        <button class="shap-tab" data-type="fraud_type_1" onclick="loadShap('fraud_type_1')">🔑 Hesap Ele Geçirme</button>
-        <button class="shap-tab" data-type="fraud_type_2" onclick="loadShap('fraud_type_2')">🔍 Kart Probing</button>
-        <button class="shap-tab shap-tab-unknown" data-type="UNKNOWN_NEW_FRAUD" onclick="loadShap('UNKNOWN_NEW_FRAUD')">⚠️ Zero-Shot (Kara Para)</button>
+        <button class="shap-tab active" data-type="fraud_type_0" onclick="loadShap('fraud_type_0')">💳 Card Cloning</button>
+        <button class="shap-tab" data-type="fraud_type_1" onclick="loadShap('fraud_type_1')">🔑 Account Takeover</button>
+        <button class="shap-tab" data-type="fraud_type_2" onclick="loadShap('fraud_type_2')">🔍 Card Probing</button>
+        <button class="shap-tab shap-tab-unknown" data-type="UNKNOWN_NEW_FRAUD" onclick="loadShap('UNKNOWN_NEW_FRAUD')">⚠️ Zero-Shot (Money Laundering)</button>
       </div>
     </div>
     <div class="shap-desc" id="shap-desc">
       <span class="shap-desc-icon">💳</span>
-      <span id="shap-desc-text">Yüksek Değerli Dolandırıcılık — Kart kopyalama veya büyük ölçekli çevrimiçi fraud</span>
+      <span id="shap-desc-text">High-value fraud — Card cloning or large-scale e-commerce fraud</span>
     </div>
     <div class="chart-wrapper" style="max-height:220px">
       <canvas id="chartShap" height="200"></canvas>
     </div>
+    <div style="font-size:10px;color:#475569;margin-top:4px;padding:4px 8px">
+      <span id="shap-source"></span>
+    </div>
+  </section>
+
+  <!-- ── CONCEPT DRIFT MONITOR ── -->
+  <section class="panel panel-drift" id="panel-drift">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🌊</span>
+        Concept Drift Monitor
+        <span id="drift-alert-badge" class="drift-badge" style="display:none">⚠️ DRIFT</span>
+      </h2>
+      <span class="panel-sub" id="drift-status-text">Monitoring…</span>
+    </div>
+    <!-- Drift Score Gauge -->
+    <div class="drift-gauge-row">
+      <div class="drift-gauge-wrap">
+        <svg class="drift-gauge-svg" viewBox="0 0 120 70" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 65 A 50 50 0 0 1 110 65" fill="none" stroke="#1e2640" stroke-width="12" stroke-linecap="round"/>
+          <path id="drift-gauge-arc" d="M10 65 A 50 50 0 0 1 110 65" fill="none" stroke="#10b981" stroke-width="12" stroke-linecap="round"
+                stroke-dasharray="157" stroke-dashoffset="157"/>
+          <text x="60" y="60" text-anchor="middle" fill="#e2e8f0" font-size="16" font-weight="700" id="drift-gauge-pct">0%</text>
+        </svg>
+        <div class="drift-gauge-label">Overall Drift Score</div>
+      </div>
+      <div class="drift-confidence-wrap">
+        <div class="drift-conf-label">Model Confidence Trend</div>
+        <div class="chart-wrapper" style="max-height:90px">
+          <canvas id="chartDriftConf" height="80"></canvas>
+        </div>
+      </div>
+    </div>
+    <!-- Feature Drift Heatmap -->
+    <div class="drift-heatmap-label">Top Feature Drift (KL Divergence)</div>
+    <div class="chart-wrapper" style="max-height:130px; margin-top:4px">
+      <canvas id="chartDrift" height="120"></canvas>
+    </div>
+  </section>
+
+  <!-- ── DIFFERENTIAL PRIVACY PANEL ── -->
+  <section class="panel panel-privacy" id="panel-privacy">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🔐</span>
+        Differential Privacy — GDPR Layer
+      </h2>
+      <span class="panel-sub">Gaussian Mechanism (ε, δ)-DP</span>
+    </div>
+    <div class="privacy-grid">
+      <!-- Epsilon Budget -->
+      <div class="privacy-metric-box">
+        <div class="pm-label">Privacy Budget (ε spent)</div>
+        <div class="pm-value" id="dp-epsilon-spent">0.00</div>
+        <div class="pm-bar-wrap">
+          <div class="pm-bar-fill" id="dp-epsilon-bar" style="width:0%;background:linear-gradient(90deg,#10b981,#f59e0b)"></div>
+        </div>
+        <div class="pm-sub">Budget limit: ε = <span id="dp-epsilon-limit">10.0</span></div>
+      </div>
+      <!-- Delta -->
+      <div class="privacy-metric-box">
+        <div class="pm-label">Delta (δ) — Failure Prob.</div>
+        <div class="pm-value" id="dp-delta">1e-5</div>
+        <div class="pm-sub">Probability of privacy breach</div>
+      </div>
+      <!-- Noise Scale -->
+      <div class="privacy-metric-box">
+        <div class="pm-label">Noise Scale (σ)</div>
+        <div class="pm-value" id="dp-sigma">—</div>
+        <div class="pm-sub">Gaussian noise added to gradients</div>
+      </div>
+      <!-- FL Rounds -->
+      <div class="privacy-metric-box">
+        <div class="pm-label">FL Rounds Completed</div>
+        <div class="pm-value" id="dp-rounds">0</div>
+        <div class="pm-sub">Each round consumes privacy budget</div>
+      </div>
+    </div>
+    <!-- Privacy/Accuracy Tradeoff Chart -->
+    <div class="privacy-tradeoff-label">Privacy vs. Accuracy Tradeoff</div>
+    <div class="chart-wrapper" style="max-height:140px; margin-top:4px">
+      <canvas id="chartPrivacy" height="130"></canvas>
+    </div>
+    <!-- Noise Slider -->
+    <div class="noise-slider-row">
+      <label class="noise-label" for="noise-slider">🎚️ Noise Level (σ): <span id="noise-val">1.0</span></label>
+      <input type="range" id="noise-slider" min="0.1" max="5.0" step="0.1" value="1.0" oninput="updateNoiseLevel(this.value)"/>
+      <span class="noise-impact" id="noise-impact">Model accuracy impact: 0%</span>
+    </div>
+  </section>
+
+  <!-- ── FL CLIENT NETWORK ── -->
+  <section class="panel panel-fl" id="panel-fl">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🌐</span>
+        Federated Learning Network
+      </h2>
+      <button class="btn-fl-round" id="btn-fl-round" onclick="runFLRound()">▶ Run FL Round</button>
+    </div>
+    <!-- SVG Topology -->
+    <div class="fl-topology">
+      <svg id="fl-svg" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+        <!-- Lines from clients to server -->
+        <line class="fl-line" id="fl-line-0" x1="50" y1="50"  x2="200" y2="100"/>
+        <line class="fl-line" id="fl-line-1" x1="50" y1="150" x2="200" y2="100"/>
+        <line class="fl-line" id="fl-line-2" x1="350" y1="50"  x2="200" y2="100"/>
+        <line class="fl-line" id="fl-line-3" x1="350" y1="150" x2="200" y2="100"/>
+        <!-- Server -->
+        <circle cx="200" cy="100" r="28" fill="#1e2640" stroke="#3b82f6" stroke-width="2.5"/>
+        <text x="200" y="96" text-anchor="middle" fill="#3b82f6" font-size="9" font-weight="700">GLOBAL</text>
+        <text x="200" y="107" text-anchor="middle" fill="#3b82f6" font-size="9">SERVER</text>
+        <!-- Client 0 -->
+        <circle cx="50" cy="50" r="22" fill="#1e2640" stroke="#10b981" stroke-width="2" id="fl-node-0"/>
+        <text x="50" y="46" text-anchor="middle" fill="#10b981" font-size="8" font-weight="600">Bank A</text>
+        <text x="50" y="57" text-anchor="middle" fill="#64748b" font-size="7" id="fl-node-acc-0">—</text>
+        <!-- Client 1 -->
+        <circle cx="50" cy="150" r="22" fill="#1e2640" stroke="#10b981" stroke-width="2" id="fl-node-1"/>
+        <text x="50" y="146" text-anchor="middle" fill="#10b981" font-size="8" font-weight="600">Bank B</text>
+        <text x="50" y="157" text-anchor="middle" fill="#64748b" font-size="7" id="fl-node-acc-1">—</text>
+        <!-- Client 2 -->
+        <circle cx="350" cy="50" r="22" fill="#1e2640" stroke="#10b981" stroke-width="2" id="fl-node-2"/>
+        <text x="350" y="46" text-anchor="middle" fill="#10b981" font-size="8" font-weight="600">Bank C</text>
+        <text x="350" y="57" text-anchor="middle" fill="#64748b" font-size="7" id="fl-node-acc-2">—</text>
+        <!-- Client 3 -->
+        <circle cx="350" cy="150" r="22" fill="#1e2640" stroke="#10b981" stroke-width="2" id="fl-node-3"/>
+        <text x="350" y="146" text-anchor="middle" fill="#10b981" font-size="8" font-weight="600">Bank D</text>
+        <text x="350" y="157" text-anchor="middle" fill="#64748b" font-size="7" id="fl-node-acc-3">—</text>
+      </svg>
+    </div>
+    <!-- Client Stats -->
+    <div class="fl-client-bars" id="fl-client-bars">
+      <div class="fl-client-row" id="fl-client-0">
+        <span class="fl-client-name">Bank A</span>
+        <div class="fl-bar-wrap"><div class="fl-bar-fill" id="fl-bar-0" style="width:0%"></div></div>
+        <span class="fl-client-acc" id="fl-acc-0">—</span>
+        <span class="fl-client-samples" id="fl-n-0">— samples</span>
+      </div>
+      <div class="fl-client-row" id="fl-client-1">
+        <span class="fl-client-name">Bank B</span>
+        <div class="fl-bar-wrap"><div class="fl-bar-fill" id="fl-bar-1" style="width:0%"></div></div>
+        <span class="fl-client-acc" id="fl-acc-1">—</span>
+        <span class="fl-client-samples" id="fl-n-1">— samples</span>
+      </div>
+      <div class="fl-client-row" id="fl-client-2">
+        <span class="fl-client-name">Bank C</span>
+        <div class="fl-bar-wrap"><div class="fl-bar-fill" id="fl-bar-2" style="width:0%"></div></div>
+        <span class="fl-client-acc" id="fl-acc-2">—</span>
+        <span class="fl-client-samples" id="fl-n-2">— samples</span>
+      </div>
+      <div class="fl-client-row" id="fl-client-3">
+        <span class="fl-client-name">Bank D</span>
+        <div class="fl-bar-wrap"><div class="fl-bar-fill" id="fl-bar-3" style="width:0%"></div></div>
+        <span class="fl-client-acc" id="fl-acc-3">—</span>
+        <span class="fl-client-samples" id="fl-n-3">— samples</span>
+      </div>
+    </div>
+    <div class="fl-round-info">Round <span id="fl-round-num">0</span> / <span id="fl-round-total">5</span> &nbsp;·&nbsp; Aggregation: FedAvg &nbsp;·&nbsp; <span id="fl-round-status">Idle</span></div>
   </section>
 
   <!-- ── MODEL COMPARISON TABLE ── -->
@@ -181,11 +348,11 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">📋</span>
-        Model Karşılaştırması
+        Model Comparison
       </h2>
     </div>
     <div class="comparison-grid" id="comparison-grid">
-      <!-- JS ile doldurulacak -->
+      <!-- Filled by JS -->
     </div>
   </section>
 
@@ -194,7 +361,7 @@
     <div class="panel-header">
       <h2 class="panel-title">
         <span class="panel-title-icon">📊</span>
-        Performans Metrikleri
+        Performance Metrics
       </h2>
     </div>
     <div class="chart-wrapper" style="max-height:220px">
@@ -212,68 +379,97 @@
     <div class="modal-header">
       <div class="modal-fraud-icon" id="modal-icon">🚨</div>
       <div>
-        <h3 class="modal-title" id="modal-title">FRAUD TESPİT EDİLDİ</h3>
+        <h3 class="modal-title" id="modal-title">FRAUD DETECTED</h3>
         <p class="modal-subtitle" id="modal-subtitle">fraud_type_0</p>
       </div>
     </div>
 
     <div class="modal-body">
-      <div class="modal-desc" id="modal-desc">Açıklama yükleniyor…</div>
+      <div class="modal-desc" id="modal-desc">Loading explanation…</div>
 
-      <!-- Türkçe risk gerekçeleri (human_explanation.bullets) -->
+      <!-- Risk bullets (human_explanation) -->
       <div id="modal-human-exp" class="modal-human-exp" style="display:none">
-        <div class="human-exp-title">🔎 Neden Fraud? — Risk Gerekçeleri</div>
+        <div class="human-exp-title">🔎 Why Fraud? — Risk Factors</div>
         <ul id="modal-bullets" class="modal-bullets"></ul>
       </div>
 
       <div class="modal-meta-grid">
         <div class="modal-meta-item">
-          <span class="meta-label">İşlem ID</span>
+          <span class="meta-label">Transaction ID</span>
           <span class="meta-value mono" id="modal-txn-id">—</span>
         </div>
         <div class="modal-meta-item">
-          <span class="meta-label">Tutar</span>
+          <span class="meta-label">Amount</span>
           <span class="meta-value" id="modal-amount">—</span>
         </div>
         <div class="modal-meta-item">
-          <span class="meta-label">🔵 FL Binary Olasılık</span>
+          <span class="meta-label">🔵 FL Binary Probability</span>
           <span class="meta-value" id="modal-fl-prob" style="color:#3b82f6">—</span>
         </div>
         <div class="modal-meta-item">
-          <span class="meta-label">🟣 FZSL Fraud Olasılık</span>
+          <span class="meta-label">🟣 FZSL Fraud Probability</span>
           <span class="meta-value" id="modal-fzsl-prob" style="color:#8b5cf6">—</span>
         </div>
         <div class="modal-meta-item">
-          <span class="meta-label">Güven Skoru</span>
+          <span class="meta-label">Confidence Score</span>
           <span class="meta-value" id="modal-confidence">—</span>
         </div>
         <div class="modal-meta-item">
-          <span class="meta-label">Zaman</span>
+          <span class="meta-label">Timestamp</span>
           <span class="meta-value mono" id="modal-time">—</span>
         </div>
       </div>
 
-      <h4 class="modal-shap-title">📐 FZSL Benzerlik Skorları (Tüm Sınıflar)</h4>
+      <h4 class="modal-shap-title">📐 FZSL Similarity Scores (All Classes)</h4>
       <div id="modal-sim-scores" class="modal-sim-scores"></div>
 
-      <h4 class="modal-shap-title" style="margin-top:16px">🔍 SHAP — Hangi Özellik Neden Etkiledi?
+      <h4 class="modal-shap-title" style="margin-top:16px">🔍 SHAP — Which Feature Drove This Decision?
         <span id="shap-modal-source" style="font-size:10px;font-weight:400;margin-left:8px;color:#64748b"></span>
       </h4>
       <div style="font-size:11px;color:#64748b;margin-bottom:8px;padding:6px 10px;background:rgba(255,255,255,.02);border-radius:6px">
-        ℹ️ SHAP değerleri FL modelinin (binary) kararını açıklar. Kırmızı = fraud ihtimalini artırıyor, Mavi = azaltıyor.
-        Sınıflandırma <b>V1-V28 PCA özelliklerine</b> dayanır — tutar tek başına belirleyici değildir.
+        ℹ️ SHAP values explain the FL model's binary decision. Red = increases fraud probability, Blue = decreases it.
+        Classification is based on <b>V1–V28 PCA features</b> — transaction amount alone is not deterministic.
       </div>
       <div class="chart-wrapper" style="max-height:200px">
         <canvas id="chartModalShap" height="180"></canvas>
       </div>
 
       <div class="modal-top-features" id="modal-top-features"></div>
+
+      <!-- Counterfactual -->
+      <div id="modal-counterfactual" style="display:none;margin-top:16px">
+        <h4 class="modal-shap-title">🔄 Counterfactual Explanation — What Would Make This Normal?</h4>
+        <div id="modal-cf-body"></div>
+      </div>
     </div>
   </div>
 </div>
 
 <!-- ──────────────────── NEW FRAUD TOAST ──────────────────── -->
 <div class="toast-container" id="toast-container"></div>
+
+<!-- ──────────────────── SYSTEM FOOTER ──────────────────── -->
+<footer class="system-footer">
+  <div class="footer-left">
+    <span class="footer-brand">🏦 FraudShield v3.0</span>
+    <span class="footer-sep">·</span>
+    <span>Erasmus Internship Portfolio Project</span>
+  </div>
+  <div class="footer-badges">
+    <span class="tech-badge pytorch">PyTorch</span>
+    <span class="tech-badge fastapi">FastAPI</span>
+    <span class="tech-badge fl">Federated Learning</span>
+    <span class="tech-badge zsl">Zero-Shot Learning</span>
+    <span class="tech-badge shap">SHAP XAI</span>
+    <span class="tech-badge dp">Differential Privacy</span>
+    <span class="tech-badge drift">Concept Drift</span>
+  </div>
+  <div class="footer-right">
+    <span id="footer-uptime">Uptime: 0s</span>
+    <span class="footer-sep">·</span>
+    <span id="footer-model-status">Model: Loading…</span>
+  </div>
+</footer>
 
 <script src="app.js"></script>
 </body>
