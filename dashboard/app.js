@@ -1,4 +1,4 @@
-// FraudShield Dashboard — app.js v3.0 (English + Drift + Privacy + FL Visualization)
+// FraudShield Dashboard — app.js v4.0 (Login + PDF Export)
 const API = '';
 const POLL_MS = 1000;
 const DRIFT_POLL_MS = 5000;
@@ -489,6 +489,7 @@ async function loadFraudTypes() {
 
 // ── MODAL ─────────────────────────────────────────
 async function openModal(txn) {
+  window._currentModalTxn = txn;  // Store for PDF export
   const meta = FRAUD_META[txn.fraud_type] || {label:txn.fraud_type,color:'#ef4444',icon:'🚨'};
   const isUnknown = txn.fraud_type === 'fraud_type_3';
 
@@ -600,6 +601,14 @@ async function openModal(txn) {
 
 function closeModal() { document.getElementById('fraud-modal').classList.remove('open'); }
 
+function exportCurrentTxnPDF() {
+  if (window._currentModalTxn && typeof exportFraudReportPDF === 'function') {
+    exportFraudReportPDF(window._currentModalTxn);
+  } else {
+    alert('PDF export module not loaded yet. Please wait a moment.');
+  }
+}
+
 // ── TRANSACTION HANDLER ─────────────────────────────
 function handleTransaction(txn) {
   addFeedItem(txn);
@@ -607,6 +616,8 @@ function handleTransaction(txn) {
     addAlertItem(txn);
     showToast(txn);
     fraudBuf++;
+    // Collect for session PDF
+    if (window._sessionAlerts) window._sessionAlerts.unshift(txn);
   } else {
     normalBuf++;
   }

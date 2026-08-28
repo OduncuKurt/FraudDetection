@@ -9,7 +9,17 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- jsPDF + html2canvas for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <link rel="stylesheet" href="style.css" />
+  <!-- Auth guard: redirect to login if no session -->
+  <script>
+    (function(){
+      var s = sessionStorage.getItem('fraudshield_session');
+      if(!s){ window.location.replace('login.html'); }
+    })();
+  </script>
 </head>
 <body>
 
@@ -41,10 +51,22 @@
       <span class="hm-label">F1 Score</span>
       <span class="hm-value">96.47%</span>
     </div>
+    <!-- User info bar -->
+    <div class="user-info-bar" id="user-info-bar">
+      <span class="user-role-badge" id="user-role-badge">Analyst</span>
+      <div class="user-name-wrap">
+        <span class="user-name" id="user-name">Sarah Chen</span>
+        <span class="user-title" id="user-title">Fraud Analyst</span>
+      </div>
+      <button class="btn-export-session" id="btn-export-session" onclick="exportSessionPDF()" title="Export session fraud report as PDF">
+        📄 Export Report
+      </button>
+      <button class="btn-logout" onclick="logout()" title="Sign out">→ Sign Out</button>
+    </div>
     <button class="btn-danger" id="btn-new-fraud" onclick="triggerNewFraud()">
       ⚠️ SIMULATE NEW FRAUD TYPE
     </button>
-    <button class="btn-ghost" onclick="resetStats()">↺ Reset</button>
+    <button class="btn-ghost" id="btn-reset" onclick="resetStats()">&#x21ba; Reset</button>
   </div>
 </header>
 
@@ -374,7 +396,10 @@
 <!-- ──────────────────── FRAUD ALERT MODAL ──────────────────── -->
 <div class="modal-overlay" id="fraud-modal" onclick="closeModal()">
   <div class="modal-card" onclick="event.stopPropagation()">
-    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-actions-top">
+      <button class="btn-modal-export" onclick="exportCurrentTxnPDF()" title="Export fraud report as PDF">📄 Export PDF</button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
 
     <div class="modal-header">
       <div class="modal-fraud-icon" id="modal-icon">🚨</div>
@@ -472,5 +497,6 @@
 </footer>
 
 <script src="app.js"></script>
+<script src="pdf_export.js"></script>
 </body>
 </html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FraudShield — Sign In</title>
+  <meta name="description" content="FraudShield secure access portal — Federated Learning fraud detection system." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+
+<!-- Animated background canvas -->
+<canvas id="particles-canvas"></canvas>
+
+<!-- Floating grid overlay -->
+<div class="grid-overlay"></div>
+
+<!-- Login container -->
+<div class="login-wrapper">
+
+  <!-- Left panel — branding -->
+  <div class="login-brand">
+    <div class="brand-logo">
+      <span class="brand-icon">🏦</span>
+      <div>
+        <span class="brand-title">FraudShield</span>
+        <span class="brand-sub">FL + FZSL Intelligence System</span>
+      </div>
+    </div>
+
+    <div class="brand-stats">
+      <div class="stat-item">
+        <span class="stat-val">96.47%</span>
+        <span class="stat-label">F1 Score</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-val">98.3%</span>
+        <span class="stat-label">Zero-Shot Detection</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-val">1.0000</span>
+        <span class="stat-label">ROC-AUC</span>
+      </div>
+    </div>
+
+    <div class="brand-features">
+      <div class="feat-row">
+        <span class="feat-icon">🔗</span>
+        <span>Federated Learning — 4 bank clients</span>
+      </div>
+      <div class="feat-row">
+        <span class="feat-icon">🧠</span>
+        <span>Zero-Shot Learning — unseen fraud detection</span>
+      </div>
+      <div class="feat-row">
+        <span class="feat-icon">🔒</span>
+        <span>Differential Privacy — GDPR compliant (ε, δ)</span>
+      </div>
+      <div class="feat-row">
+        <span class="feat-icon">📊</span>
+        <span>SHAP XAI — explainable every decision</span>
+      </div>
+      <div class="feat-row">
+        <span class="feat-icon">🌊</span>
+        <span>Concept Drift — real-time KL divergence</span>
+      </div>
+    </div>
+
+    <div class="brand-footer">
+      Built for the Erasmus Internship Program · 2026
+    </div>
+  </div>
+
+  <!-- Right panel — login form -->
+  <div class="login-card">
+    <div class="login-card-inner">
+
+      <!-- Card header -->
+      <div class="card-header">
+        <h1 class="card-title">Sign In</h1>
+        <p class="card-sub">Select your role and enter credentials to access the dashboard</p>
+      </div>
+
+      <!-- Role selector -->
+      <div class="role-selector">
+        <label class="role-label">Access Role</label>
+        <div class="role-pills" id="role-pills">
+          <button class="role-pill active" data-role="analyst" id="pill-analyst" onclick="selectRole('analyst')">
+            <span class="pill-icon">🔍</span>
+            <span class="pill-name">Analyst</span>
+            <span class="pill-desc">Monitor & investigate</span>
+          </button>
+          <button class="role-pill" data-role="admin" id="pill-admin" onclick="selectRole('admin')">
+            <span class="pill-icon">⚙️</span>
+            <span class="pill-name">Admin</span>
+            <span class="pill-desc">Full system control</span>
+          </button>
+          <button class="role-pill" data-role="auditor" id="pill-auditor" onclick="selectRole('auditor')">
+            <span class="pill-icon">📋</span>
+            <span class="pill-name">Auditor</span>
+            <span class="pill-desc">Compliance & reports</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <div class="input-wrap">
+            <span class="input-icon">👤</span>
+            <input
+              type="text"
+              id="username"
+              class="form-input"
+              placeholder="Enter username"
+              autocomplete="username"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <div class="input-wrap">
+            <span class="input-icon">🔑</span>
+            <input
+              type="password"
+              id="password"
+              class="form-input"
+              placeholder="Enter password"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="show-pw-btn" id="show-pw-btn" onclick="togglePassword()" title="Show password">👁</button>
+          </div>
+        </div>
+
+        <!-- Error message -->
+        <div class="login-error" id="login-error" style="display:none">
+          <span>⚠️</span> <span id="login-error-text">Invalid credentials</span>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="btn-login" id="btn-login">
+          <span id="btn-login-text">Sign In</span>
+          <span id="btn-login-spinner" class="btn-spinner" style="display:none">⏳</span>
+        </button>
+      </form>
+
+      <!-- Demo credentials hint -->
+      <div class="demo-hint">
+        <div class="demo-hint-title">Demo Credentials</div>
+        <div class="demo-creds">
+          <div class="demo-cred-row" onclick="fillCredential('analyst','analyst123')">
+            <span class="demo-role-badge analyst">Analyst</span>
+            <span class="demo-user">analyst</span>
+            <span class="demo-sep">/</span>
+            <span class="demo-pass">analyst123</span>
+          </div>
+          <div class="demo-cred-row" onclick="fillCredential('admin','admin123')">
+            <span class="demo-role-badge admin">Admin</span>
+            <span class="demo-user">admin</span>
+            <span class="demo-sep">/</span>
+            <span class="demo-pass">admin123</span>
+          </div>
+          <div class="demo-cred-row" onclick="fillCredential('auditor','audit123')">
+            <span class="demo-role-badge auditor">Auditor</span>
+            <span class="demo-user">auditor</span>
+            <span class="demo-sep">/</span>
+            <span class="demo-pass">audit123</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card footer -->
+      <div class="card-footer-note">
+        🔒 Secured with JWT · TLS 1.3 · Differential Privacy (ε=1.0, δ=1e-5)
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="login.js"></script>
+</body>
+</html>

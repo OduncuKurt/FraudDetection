@@ -382,3 +382,90 @@ body {
 .tech-badge.dp       { background: rgba(139,92,246,.15);  color: #a78bfa; border: 1px solid rgba(139,92,246,.25); }
 .tech-badge.drift    { background: rgba(99,102,241,.15);  color: #818cf8; border: 1px solid rgba(99,102,241,.25); }
 .footer-right { font-family: 'JetBrains Mono', monospace; color: var(--text3); }
+
+/* ── USER INFO BAR (header) ───────────────────────────────────────────────── */
+.user-info-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+}
+.user-role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 5px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+.user-role-badge[data-role="analyst"] { background: rgba(59,130,246,.2);  color: #60a5fa; border: 1px solid rgba(59,130,246,.35); }
+.user-role-badge[data-role="admin"]   { background: rgba(239,68,68,.2);   color: #f87171; border: 1px solid rgba(239,68,68,.35); }
+.user-role-badge[data-role="auditor"] { background: rgba(245,158,11,.2);  color: #fbbf24; border: 1px solid rgba(245,158,11,.35); }
+.user-name-wrap { display: flex; flex-direction: column; gap: 0px; }
+.user-name  { font-size: 12px; font-weight: 700; color: var(--text); line-height: 1.2; }
+.user-title { font-size: 10px; color: var(--text3); line-height: 1.2; }
+.btn-export-session {
+  background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(139,92,246,.15));
+  border: 1px solid rgba(99,102,241,.35);
+  color: #a5b4fc;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-export-session:hover { background: rgba(99,102,241,.3); color: #fff; transform: scale(1.03); }
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--panel-border);
+  color: var(--text3);
+  padding: 5px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── MODAL TOP ACTIONS (PDF export + close) ────────────────────────────────── */
+.modal-actions-top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 16px 0;
+}
+.btn-modal-export {
+  background: linear-gradient(135deg, rgba(99,102,241,.2), rgba(139,92,246,.15));
+  border: 1px solid rgba(99,102,241,.35);
+  color: #a5b4fc;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-modal-export:hover { background: rgba(99,102,241,.35); color: #fff; box-shadow: 0 0 14px rgba(99,102,241,.3); }
+.modal-close {
+  position: static !important;
+  background: var(--bg3);
+  border: 1px solid var(--panel-border);
+  color: var(--text2);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+}
+.modal-close:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
