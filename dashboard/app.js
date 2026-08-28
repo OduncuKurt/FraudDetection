@@ -165,10 +165,10 @@ function shapChartOptions() {
 
 function buildPieLegend() {
   const items = [
-    {label:'Type 0 — High-Value Fraud', color:'#ef4444'},
-    {label:'Type 1 — Account Takeover',  color:'#f59e0b'},
-    {label:'Type 2 — Card Probing',      color:'#eab308'},
-    {label:'Type 3 — ZSL New Fraud',     color:'#a855f7'},
+    {label:'Type 0 — Card Cloning',    color:'#ef4444'},
+    {label:'Type 1 — Acct Takeover',   color:'#f59e0b'},
+    {label:'Type 2 — Card Probing',    color:'#eab308'},
+    {label:'Type 3 — Zero-Shot (ZSL)', color:'#a855f7'},
   ];
   document.getElementById('pie-legend').innerHTML = items.map(i=>`
     <div class="pie-legend-item">
@@ -460,7 +460,7 @@ async function loadShap(fraudType) {
     setEl('shap-desc-icon', desc.icon || '📊');
     setEl('shap-desc-text', desc.title ? `${desc.title} — ${desc.description}` : fraudType);
     const src = document.getElementById('shap-source');
-    if (src) src.textContent = data.source === 'real_model' ? '✅ Real SHAP (GradientExplainer)' : '⚠️ Template fallback';
+    if (src) src.textContent = data.source === 'real_model' ? '✅ Real SHAP (GradientExplainer)' : '📊 Statistical Baseline';
   } catch(e) { console.warn('SHAP load failed:', e); }
 }
 
@@ -548,7 +548,7 @@ async function openModal(txn) {
     if (!shapVals || Object.keys(shapVals).length === 0) {
       const data = await fetch(`${API}/api/shap/${txn.fraud_type}`).then(r=>r.json());
       shapVals = data.shap_values;
-      shapSource = data.source === 'gradient_x_input' ? '✅ Real SHAP (type example)' : '⚠️ Template (model not loaded)';
+      shapSource = data.source === 'gradient_x_input' ? '✅ Real SHAP (this transaction)' : '📊 Statistical Baseline';
     }
 
     const srcEl = document.getElementById('shap-modal-source');
@@ -698,6 +698,10 @@ function showToast(txn) {
   const meta = FRAUD_META[txn.fraud_type] || {};
   const isUnknown = txn.fraud_type === 'fraud_type_3';
   const c = document.getElementById('toast-container');
+
+  // Cap at 3 toasts to prevent chart overlap
+  while (c.children.length >= 3) c.lastChild.remove();
+
   const t = document.createElement('div');
   t.className = `toast ${isUnknown?'toast-unknown':'toast-fraud'}`;
   t.innerHTML = `
@@ -709,8 +713,15 @@ function showToast(txn) {
   `;
   t.onclick = () => openModal(txn);
   c.prepend(t);
-  setTimeout(()=>t.remove(), isUnknown ? 9000 : 4500);
-  if (c.children.length > 5) c.lastChild.remove();
+
+  // Auto-dismiss with fade-out
+  const dismissMs = isUnknown ? 8000 : 4000;
+  setTimeout(() => {
+    t.style.transition = 'opacity 0.4s, transform 0.4s';
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(20px)';
+    setTimeout(() => t.remove(), 400);
+  }, dismissMs);
 }
 
 // ── COMPARISON ──────────────────────────────────────

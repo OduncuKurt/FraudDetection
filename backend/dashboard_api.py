@@ -545,13 +545,13 @@ async def get_fraud_types():
 @app.get("/api/model_comparison")
 async def get_model_comparison():
     return {"models": [
-        {"name":"Centralized MLP","description":"Tek merkezi sunucu — veri gizliliği yok",
+        {"name":"Centralized MLP","description":"Single central server — raw data shared (GDPR risk)",
          "precision":0.9289,"recall":0.9388,"f1":0.9338,"roc_auc":0.9991,"pr_auc":0.7741,
          "unseen_detection":0.0,"privacy":False,"color":"#64748b"},
-        {"name":"Federated Learning (FL)","description":"4 banka verilerini paylaşmadan birlikte eğitim",
+        {"name":"Federated Learning (FL)","description":"4 banks train together without sharing raw data",
          "precision":0.9373,"recall":1.0000,"f1":0.9676,"roc_auc":1.0000,"pr_auc":0.9942,
          "unseen_detection":0.0,"privacy":True,"color":"#3b82f6"},
-        {"name":"FL + FZSL (Bu Sistem)","description":"FL gizliliği + Zero-Shot ile yeni fraud tespiti",
+        {"name":"FL + FZSL (This System)","description":"FL privacy + Zero-Shot detection of unseen fraud",
          "precision":0.9579,"recall":0.9715,"f1":0.9647,"roc_auc":1.0000,"pr_auc":0.9934,
          "unseen_detection":0.9831,"privacy":True,"color":"#8b5cf6"},
     ]}
