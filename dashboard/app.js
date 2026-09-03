@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   startPrivacyPolling();
   startFLPolling();
   startUptimeTick();
+  initRiskMap();
 });
 
 // ── CHARTS ──────────────────────────────────────────
@@ -776,4 +777,134 @@ async function resetStats() {
   document.getElementById('alerts-container').innerHTML = '<div class="feed-empty"><span class="feed-empty-icon">✅</span><span>No fraud detected yet</span></div>';
   document.getElementById('alert-count-badge').textContent = '0';
   flowNormal.fill(0); flowFraud.fill(0); chartFlow.update('none');
+  // Clear map markers on reset
+  if (window._riskMapMarkers) {
+    window._riskMapMarkers.forEach(m => m.remove());
+    window._riskMapMarkers = [];
+    window._sessionAlerts = [];
+  }
+  setEl('map-stat-total', '0 points plotted');
+  setEl('map-stat-amount', '$0 total blocked');
+}
+
+// ─── RISK MAP ─────────────────────────────────────────────────────────────────
+const MAP_COLORS = {
+  fraud_type_0: '#ef4444',
+  fraud_type_1: '#f59e0b',
+  fraud_type_2: '#eab308',
+  fraud_type_3: '#a855f7',
+};
+const MAP_LABELS = {
+  fraud_type_0: 'Card Cloning',
+  fraud_type_1: 'Account Takeover',
+  fraud_type_2: 'Card Probing',
+  fraud_type_3: '⚡ Zero-Shot (New Type)',
+};
+
+let _leafletMap = null;
+window._riskMapMarkers = [];
+window._mapPointIds = new Set(); // avoid duplicates
+
+function initRiskMap() {
+  if (typeof L === 'undefined') {
+    console.warn('[Map] Leaflet not loaded');
+    return;
+  }
+
+  _leafletMap = L.map('risk-map', {
+    center: [20, 10],
+    zoom: 2,
+    zoomControl: true,
+    attributionControl: false,
+  });
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 10,
+    minZoom: 1,
+  }).addTo(_leafletMap);
+
+  L.control.attribution({ prefix: '' }).addTo(_leafletMap);
+
+  // Initial load + polling every 5s
+  pollMapPoints();
+  setInterval(pollMapPoints, 5000);
+}
+
+async function pollMapPoints() {
+  try {
+    const data = await fetch(`${API}/api/map/points`).then(r => r.json());
+    const pts = data.points || [];
+    let newCount = 0;
+    let totalAmount = 0;
+
+    pts.forEach(pt => {
+      totalAmount += (pt.amount || 0);
+      if (window._mapPointIds.has(pt.id)) return;
+      window._mapPointIds.add(pt.id);
+      newCount++;
+      addMapMarker(pt);
+    });
+
+    // Update stats bar
+    setEl('map-stat-total', `${pts.length} point${pts.length !== 1 ? 's' : ''} plotted`);
+    setEl('map-stat-amount', `$${totalAmount.toFixed(2)} total blocked`);
+  } catch(e) { /* silent */ }
+}
+
+function addMapMarker(pt) {
+  if (!_leafletMap) return;
+  const color   = MAP_COLORS[pt.fraud_type] || '#ef4444';
+  const label   = MAP_LABELS[pt.fraud_type] || pt.fraud_type;
+  const isZSL   = pt.fraud_type === 'fraud_type_3';
+  const radius  = isZSL ? 10 : 7;
+  const ts      = new Date(pt.timestamp * 1000).toLocaleString('en-GB');
+  const riskColor = pt.risk_level?.includes('CRITICAL') ? '#ef4444'
+                  : pt.risk_level?.includes('HIGH')     ? '#f59e0b' : '#10b981';
+
+  // Outer pulsing circle
+  const pulse = L.circleMarker([pt.lat, pt.lng], {
+    radius: radius + 8,
+    color: color,
+    fillColor: color,
+    fillOpacity: 0.12,
+    weight: 1,
+    opacity: 0.4,
+    className: 'map-pulse-ring',
+  }).addTo(_leafletMap);
+
+  // Inner solid dot
+  const dot = L.circleMarker([pt.lat, pt.lng], {
+    radius,
+    color: '#000',
+    weight: 1,
+    fillColor: color,
+    fillOpacity: 0.9,
+  }).addTo(_leafletMap);
+
+  dot.bindPopup(`
+    <div class="map-popup-title">${label}</div>
+    <span class="map-popup-badge" style="background:${color}22;color:${color};border:1px solid ${color}44">
+      ${pt.fraud_type.replace('_',' ').toUpperCase()}
+    </span>
+    <div class="map-popup-meta">
+      <b>ID:</b> ${pt.id}<br>
+      <b>Amount:</b> $${(pt.amount||0).toFixed(2)}<br>
+      <b>FL Score:</b> ${((pt.fl_prob||0)*100).toFixed(1)}%<br>
+      <b>Risk:</b> <span style="color:${riskColor}">${pt.risk_level || 'HIGH'}</span><br>
+      <b>Time:</b> ${ts}
+    </div>
+  `, { maxWidth: 220 });
+
+  window._riskMapMarkers.push(pulse, dot);
+
+  // Animate new marker in with a scale effect
+  if (newCount || true) {
+    dot.setStyle({ fillOpacity: 0 });
+    let op = 0;
+    const fadeIn = setInterval(() => {
+      op = Math.min(op + 0.08, 0.9);
+      dot.setStyle({ fillOpacity: op });
+      if (op >= 0.9) clearInterval(fadeIn);
+    }, 30);
+  }
 }

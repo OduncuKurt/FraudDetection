@@ -113,7 +113,37 @@ _stats = {
 }
 
 _recent_txns: deque = deque(maxlen=200)
-_fraud_alerts: deque = deque(maxlen=50)
+_fraud_alerts: deque = deque(maxlen=100)  # increased for audit log
+
+# ─── Geo location simulation ──────────────────────────────────────────────────
+# Each fraud type maps to realistic geographic clusters
+_GEO_CLUSTERS = {
+    "fraud_type_0": [   # Card Cloning / CNP - Eastern Europe, Asia
+        (50.4, 30.5), (48.2, 16.4), (52.2, 21.0), (47.5, 19.0),
+        (55.7, 37.6), (41.0, 28.9), (39.9, 116.4), (1.3, 103.8),
+    ],
+    "fraud_type_1": [   # Account Takeover - North America, W. Europe
+        (40.7, -74.0), (34.0, -118.2), (51.5, -0.1), (48.8, 2.3),
+        (52.5, 13.4), (43.6, -79.4), (41.8, -87.6), (37.7, -122.4),
+    ],
+    "fraud_type_2": [   # Micro Probing - SE Asia, Africa
+        (13.7, 100.5), (3.1, 101.7), (14.5, 121.0), (6.5, 3.4),
+        (5.5, -0.2), (4.0, 9.7), (22.3, 114.2), (23.1, 113.3),
+    ],
+    "fraud_type_3": [   # Zero-Shot / Unknown - random global
+        (-33.9, 18.4), (-23.5, -46.6), (19.4, -99.1), (28.6, 77.2),
+        (-34.6, -58.4), (30.0, 31.2), (55.9, -3.2), (45.4, 12.3),
+    ],
+    "normal": [(0, 0)],  # unused
+}
+
+def _gen_geo(fraud_type: str) -> dict:
+    clusters = _GEO_CLUSTERS.get(fraud_type, [(0, 0)])
+    base = random.choice(clusters)
+    return {
+        "lat": round(base[0] + random.uniform(-3.5, 3.5), 4),
+        "lng": round(base[1] + random.uniform(-3.5, 3.5), 4),
+    }
 
 # ─── Startup ──────────────────────────────────────────────────────────────────
 @app.on_event("startup")
@@ -234,9 +264,11 @@ def _next_transaction():
                 "similarity_scores": {k: round(v, 4) for k, v in sim_scores.items()},
                 "shap_values": shap_exp,
                 "shap_ready": shap_exp is not None,
-                "human_explanation": h_exp,   # Türkçe madde madde açıklama
+                "human_explanation": h_exp,
                 "message": msg,
                 "model_used": "REAL — FL+FZSL",
+                "geo_location": _gen_geo(fraud_type) if is_fraud else None,
+                "risk_level": h_exp.get("risk_level", "HIGH") if h_exp else "HIGH",
             }
         except Exception as e:
             print(f"[HATA] Inference row {row_idx}: {e}")
@@ -275,8 +307,10 @@ def _fallback_txn():
         "fzsl_fraud_probability": round(random.uniform(0.6,0.95) if is_fraud else random.uniform(0.01,0.1),4),
         "confidence": round(random.uniform(0.75,0.98) if is_fraud else random.uniform(0.85,0.99),4),
         "similarity_scores": {}, "shap_values": None, "shap_ready": False,
-        "message": "Simülasyon modu (model yüklü değil).",
+        "message": "Simulation mode (model not loaded).",
         "model_used": "SIMULATION",
+        "geo_location": _gen_geo(ft) if is_fraud else None,
+        "risk_level": "HIGH" if is_fraud else "LOW",
     }
 
 
@@ -319,6 +353,50 @@ async def get_alerts(limit: int = 20):
 @app.get("/api/transactions")
 async def get_transactions(limit: int = 50):
     return {"transactions": list(_recent_txns)[:limit]}
+
+@app.get("/api/audit/log")
+async def get_audit_log(
+    limit: int = 100,
+    fraud_type: str = None,
+    risk_level: str = None,
+    since: float = None,
+):
+    """Paginated audit log of all fraud alerts with optional filters."""
+    alerts = list(_fraud_alerts)
+    if fraud_type and fraud_type != "all":
+        alerts = [a for a in alerts if a.get("fraud_type") == fraud_type]
+    if risk_level and risk_level != "all":
+        alerts = [a for a in alerts
+                  if risk_level.upper() in (a.get("risk_level") or "").upper()]
+    if since:
+        alerts = [a for a in alerts if a.get("timestamp", 0) >= since]
+    total = len(alerts)
+    alerts = alerts[:limit]
+    # Strip large shap_values from audit response (too heavy)
+    slim = []
+    for a in alerts:
+        s = {k: v for k, v in a.items() if k not in ("shap_values", "similarity_scores")}
+        slim.append(s)
+    return {"alerts": slim, "total": total, "returned": len(slim)}
+
+@app.get("/api/map/points")
+async def get_map_points():
+    """Returns all fraud alerts that have geo_location for the risk map."""
+    pts = [
+        {
+            "id": a["id"],
+            "lat": a["geo_location"]["lat"],
+            "lng": a["geo_location"]["lng"],
+            "fraud_type": a["fraud_type"],
+            "amount": a["amount"],
+            "fl_prob": a["fl_probability"],
+            "risk_level": a.get("risk_level", "HIGH"),
+            "timestamp": a["timestamp"],
+        }
+        for a in list(_fraud_alerts)
+        if a.get("geo_location")
+    ]
+    return {"points": pts, "count": len(pts)}
 
 @app.get("/api/shap/{fraud_type}")
 async def get_shap(fraud_type: str):

@@ -12,6 +12,9 @@
   <!-- jsPDF + html2canvas for PDF export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <!-- Leaflet.js for Risk Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <link rel="stylesheet" href="style.css" />
   <!-- Auth guard: redirect to login if no session -->
   <script>
@@ -61,12 +64,13 @@
       <button class="btn-export-session" id="btn-export-session" onclick="exportSessionPDF()" title="Export session fraud report as PDF">
         📄 Export Report
       </button>
+      <a href="audit.html" class="btn-audit-log" id="btn-audit-log" title="Open Audit Log">📋 Audit Log</a>
       <button class="btn-logout" onclick="logout()" title="Sign out">→ Sign Out</button>
     </div>
     <button class="btn-danger" id="btn-new-fraud" onclick="triggerNewFraud()">
       ⚠️ SIMULATE NEW FRAUD TYPE
     </button>
-    <button class="btn-ghost" id="btn-reset" onclick="resetStats()">&#x21ba; Reset</button>
+    <button class="btn-ghost" id="btn-reset" onclick="resetStats()">↺ Reset</button>
   </div>
 </header>
 
@@ -167,6 +171,30 @@
     </div>
     <div class="chart-wrapper">
       <canvas id="chartFlow" height="120"></canvas>
+    </div>
+  </section>
+
+  <!-- ── RISK MAP PANEL ── -->
+  <section class="panel panel-map" id="panel-map">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">🗺️</span>
+        Global Fraud Risk Map
+      </h2>
+      <div class="map-legend" id="map-legend">
+        <span class="map-leg-dot" style="background:#ef4444"></span><span>Card Cloning</span>
+        <span class="map-leg-dot" style="background:#f59e0b"></span><span>Acct Takeover</span>
+        <span class="map-leg-dot" style="background:#eab308"></span><span>Card Probing</span>
+        <span class="map-leg-dot" style="background:#a855f7"></span><span>Zero-Shot</span>
+      </div>
+    </div>
+    <div id="risk-map" class="risk-map-container"></div>
+    <div class="map-stats-row" id="map-stats-row">
+      <span class="map-stat" id="map-stat-total">0 points plotted</span>
+      <span class="map-stat-sep">·</span>
+      <span class="map-stat" id="map-stat-amount">$0 total blocked</span>
+      <span class="map-stat-sep">·</span>
+      <span class="map-stat map-live"><span class="pulse-dot"></span> Live updates</span>
     </div>
   </section>
 
@@ -476,7 +504,7 @@
 <!-- ──────────────────── SYSTEM FOOTER ──────────────────── -->
 <footer class="system-footer">
   <div class="footer-left">
-    <span class="footer-brand">🏦 FraudShield v3.0</span>
+    <span class="footer-brand">🏦 FraudShield v4.1</span>
     <span class="footer-sep">·</span>
     <span>Erasmus Internship Portfolio Project</span>
   </div>

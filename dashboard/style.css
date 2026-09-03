@@ -76,13 +76,14 @@ body {
 .panel-feed    { grid-column: 1;     grid-row: 2 / 4; }
 .panel-alerts  { grid-column: 2;     grid-row: 2 / 4; }
 .panel-chart   { grid-column: 3;     grid-row: 2; }
+.panel-map     { grid-column: 1 / -1; grid-row: 4; }  /* Full-width Risk Map */
 .panel-pie     { grid-column: 3;     grid-row: 3; }
-.panel-shap    { grid-column: 1 / 3; grid-row: 4; }
-.panel-drift   { grid-column: 3;     grid-row: 4; }
-.panel-privacy { grid-column: 1 / 3; grid-row: 5; }
-.panel-fl      { grid-column: 3;     grid-row: 5; }
-.panel-comparison { grid-column: 1 / 2; grid-row: 6; }
-.panel-metrics    { grid-column: 2 / -1; grid-row: 6; }
+.panel-shap    { grid-column: 1 / 3; grid-row: 5; }
+.panel-drift   { grid-column: 3;     grid-row: 5; }
+.panel-privacy { grid-column: 1 / 3; grid-row: 6; }
+.panel-fl      { grid-column: 3;     grid-row: 6; }
+.panel-comparison { grid-column: 1 / 2; grid-row: 7; }
+.panel-metrics    { grid-column: 2 / -1; grid-row: 7; }
 
 
 /* KPI CARDS */
@@ -469,3 +470,78 @@ body {
   transition: all .2s;
 }
 .modal-close:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+/* ── AUDIT LOG NAV BUTTON ────────────────────────────────────────────────── */
+.btn-audit-log {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(16,185,129,.15), rgba(59,130,246,.1));
+  border: 1px solid rgba(16,185,129,.3);
+  color: #34d399;
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.btn-audit-log:hover { background: rgba(16,185,129,.25); color: #fff; border-color: #10b981; }
+
+/* ── RISK MAP PANEL ───────────────────────────────────────────────────── */
+.risk-map-container {
+  height: 340px;
+  width: 100%;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  position: relative;
+}
+/* Override Leaflet tile colors to match dark theme */
+.risk-map-container .leaflet-tile {
+  filter: brightness(0.45) saturate(0.5) hue-rotate(190deg);
+}
+.risk-map-container .leaflet-control-zoom a {
+  background: var(--panel) !important;
+  color: var(--text2) !important;
+  border-color: var(--panel-border) !important;
+}
+.map-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.map-leg-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px currentColor;
+}
+.map-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--panel-border);
+  font-size: 11px;
+  color: var(--text3);
+}
+.map-stat { font-weight: 600; color: var(--text2); }
+.map-stat-sep { color: var(--panel-border); }
+.map-live { display: flex; align-items: center; gap: 5px; color: var(--success); }
+
+/* Custom Leaflet popup dark theme */
+.leaflet-popup-content-wrapper {
+  background: var(--panel) !important;
+  border: 1px solid var(--panel-border) !important;
+  color: var(--text) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5) !important;
+}
+.leaflet-popup-tip { background: var(--panel) !important; }
+.leaflet-popup-close-button { color: var(--text2) !important; }
+.map-popup-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.map-popup-meta  { font-size: 11px; color: var(--text2); line-height: 1.6; }
+.map-popup-badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-bottom: 6px; }

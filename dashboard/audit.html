@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FraudShield — Audit Log</title>
+  <meta name="description" content="FraudShield compliance audit log — full history of fraud detections, risk levels, and model decisions." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- jsPDF for CSV/PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Auth guard -->
+  <script>
+    (function(){
+      var s = sessionStorage.getItem('fraudshield_session');
+      if (!s) { window.location.replace('login.html'); return; }
+      try {
+        var sess = JSON.parse(s);
+        if (sess.role === 'analyst') {
+          // Analyst has read-only access — allowed but limited
+        }
+      } catch(_) { window.location.replace('login.html'); }
+    })();
+  </script>
+  <link rel="stylesheet" href="audit.css" />
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header id="audit-header">
+  <div class="audit-header-left">
+    <a href="index.html" class="back-btn">← Dashboard</a>
+    <div class="audit-logo">
+      <span class="audit-logo-icon">🏦</span>
+      <div>
+        <span class="audit-logo-title">FraudShield</span>
+        <span class="audit-logo-sub">Compliance Audit Log</span>
+      </div>
+    </div>
+  </div>
+  <div class="audit-header-right">
+    <div class="audit-user-bar" id="audit-user-bar">
+      <span class="audit-role-badge" id="audit-role-badge">Auditor</span>
+      <span class="audit-user-name" id="audit-user-name">—</span>
+    </div>
+    <button class="btn-csv-export" id="btn-csv-export" onclick="exportCSV()">⬇ Export CSV</button>
+    <button class="btn-back-logout" onclick="logout()">→ Sign Out</button>
+  </div>
+</header>
+
+<!-- ── STATS STRIP ── -->
+<div class="audit-stats-strip" id="audit-stats-strip">
+  <div class="audit-stat-card">
+    <span class="audit-stat-val" id="stat-total">—</span>
+    <span class="audit-stat-label">Total Fraud Events</span>
+  </div>
+  <div class="audit-stat-card danger">
+    <span class="audit-stat-val" id="stat-critical">—</span>
+    <span class="audit-stat-label">Critical / High Risk</span>
+  </div>
+  <div class="audit-stat-card purple">
+    <span class="audit-stat-val" id="stat-zsl">—</span>
+    <span class="audit-stat-label">Zero-Shot Detections</span>
+  </div>
+  <div class="audit-stat-card warning">
+    <span class="audit-stat-val" id="stat-amount">—</span>
+    <span class="audit-stat-label">Total Amount Blocked</span>
+  </div>
+  <div class="audit-stat-card success">
+    <span class="audit-stat-val" id="stat-model">FL + FZSL</span>
+    <span class="audit-stat-label">Detection Model</span>
+  </div>
+</div>
+
+<!-- ── FILTERS ── -->
+<div class="audit-filters" id="audit-filters">
+  <div class="filter-group">
+    <label class="filter-label">Fraud Type</label>
+    <select id="filter-type" onchange="applyFilters()" class="filter-select">
+      <option value="all">All Types</option>
+      <option value="fraud_type_0">Type 0 — Card Cloning</option>
+      <option value="fraud_type_1">Type 1 — Account Takeover</option>
+      <option value="fraud_type_2">Type 2 — Card Probing</option>
+      <option value="fraud_type_3">Type 3 — Zero-Shot</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Risk Level</label>
+    <select id="filter-risk" onchange="applyFilters()" class="filter-select">
+      <option value="all">All Levels</option>
+      <option value="CRITICAL">Critical</option>
+      <option value="HIGH">High</option>
+      <option value="MEDIUM">Medium</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">Search</label>
+    <input type="text" id="filter-search" class="filter-input" placeholder="Transaction ID or amount…" oninput="applyFilters()" />
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">&nbsp;</label>
+    <button class="btn-filter-clear" onclick="clearFilters()">✕ Clear</button>
+  </div>
+  <div class="filter-group" style="margin-left:auto">
+    <label class="filter-label">Live Updates</label>
+    <div class="live-toggle-wrap">
+      <input type="checkbox" id="live-toggle" checked onchange="toggleLive(this.checked)" />
+      <label for="live-toggle" class="live-toggle-label"><span class="pulse-dot"></span> Auto-refresh</label>
+    </div>
+  </div>
+</div>
+
+<!-- ── AUDIT TABLE ── -->
+<main class="audit-main">
+  <div class="audit-table-wrap">
+    <div class="audit-table-header">
+      <span class="audit-table-title">📋 Fraud Event Log</span>
+      <span class="audit-count" id="audit-count">Loading…</span>
+    </div>
+
+    <div class="audit-table-container" id="audit-table-container">
+      <table class="audit-table" id="audit-table">
+        <thead>
+          <tr>
+            <th class="col-time" onclick="sortBy('timestamp')">Time <span class="sort-arrow" id="sort-timestamp">↓</span></th>
+            <th class="col-id"   onclick="sortBy('id')">Transaction ID <span class="sort-arrow" id="sort-id"></span></th>
+            <th class="col-type" onclick="sortBy('fraud_type')">Fraud Type <span class="sort-arrow" id="sort-fraud_type"></span></th>
+            <th class="col-amount" onclick="sortBy('amount')">Amount <span class="sort-arrow" id="sort-amount"></span></th>
+            <th class="col-fl"   onclick="sortBy('fl_probability')">FL Score <span class="sort-arrow" id="sort-fl_probability"></span></th>
+            <th class="col-fzsl" onclick="sortBy('fzsl_fraud_probability')">FZSL Score <span class="sort-arrow" id="sort-fzsl_fraud_probability"></span></th>
+            <th class="col-risk" onclick="sortBy('risk_level')">Risk <span class="sort-arrow" id="sort-risk_level"></span></th>
+            <th class="col-model">Model</th>
+            <th class="col-geo">Location</th>
+          </tr>
+        </thead>
+        <tbody id="audit-tbody">
+          <tr><td colspan="9" class="table-loading"><span class="spinner"></span> Loading fraud events…</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="audit-table-footer">
+      <span id="audit-footer-info">—</span>
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ── DETAIL PANEL (slide-in) ── -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <div class="detail-header">
+    <span class="detail-title" id="detail-title">Transaction Detail</span>
+    <button class="detail-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="detail-body" id="detail-body">—</div>
+</div>
+
+<!-- ── FOOTER ── -->
+<footer class="audit-footer">
+  <span>🏦 FraudShield v4.1 · Erasmus Internship Portfolio · Compliance Audit Module</span>
+  <span id="audit-uptime-footer">Session: active</span>
+</footer>
+
+<script src="audit.js"></script>
+</body>
+</html>
