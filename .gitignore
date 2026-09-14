@@ -14,6 +14,8 @@ data/
 *.csv
 *.xlsx
 *.parquet
+# Exception: demo subset is small (1.3MB) and needed for Railway deployment
+!data/creditcard_demo.csv
 
 # ─── Model files: included because they are small (<1MB) and needed for deploy
 # checkpoints/   <-- NOT ignored, needed for Railway/Render deployment

@@ -174,16 +174,24 @@ async def startup_event():
         except Exception as e:
             print(f"[ERROR] Model could not be loaded: {e}")
 
-    csv_path = os.path.join("data", "creditcard.csv")
-    if os.path.exists(csv_path):
-        print("[API] Loading creditcard.csv...")
+    # Load CSV: prefer demo subset (committed to git, 1.3MB) over full 144MB file
+    csv_demo = os.path.join("data", "creditcard_demo.csv")
+    csv_full = os.path.join("data", "creditcard.csv")
+    csv_path = csv_demo if os.path.exists(csv_demo) else (csv_full if os.path.exists(csv_full) else None)
+
+    if csv_path:
+        print(f"[API] Loading {os.path.basename(csv_path)}...")
         raw = pd.read_csv(csv_path)
-        # Realistic distribution: fraud 0.17% → ~1 fraud per 600 normal
-        fraud_df  = raw[raw["Class"] == 1].copy()          # 492 fraud
-        normal_df = raw[raw["Class"] == 0].sample(n=5000, random_state=42)
+        fraud_df  = raw[raw["Class"] == 1].copy()
+        normal_df = raw[raw["Class"] == 0].copy()
+        # If full CSV: sample 5000 normal; if demo CSV: use all (already balanced)
+        if len(normal_df) > 5000:
+            normal_df = normal_df.sample(n=5000, random_state=42)
         _df = pd.concat([normal_df, fraud_df]).sample(frac=1, random_state=0).reset_index(drop=True)
-        print(f"[API] OK - {len(_df)} transactions ready ({len(fraud_df)} fraud, {len(normal_df)} normal).")
-    
+        print(f"[API] OK - {len(_df)} rows ready ({len(fraud_df)} fraud, {len(normal_df)} normal).")
+    else:
+        print("[API] No CSV found — running in simulation mode (8% fraud rate).")
+
     print("[API] Ready!")
 
 
