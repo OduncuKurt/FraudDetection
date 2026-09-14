@@ -293,24 +293,43 @@ def _next_transaction():
 
 
 def _fallback_txn():
+    """Simulation mode: realistic demo fraud rate ~8% so fraud shows up during presentations."""
     roll = random.random()
-    is_fraud = roll < 0.0017
+    is_fraud = roll < 0.08          # 8% fraud rate — good for demo visibility
     ft = "normal"
     if is_fraud:
         r = random.random()
-        ft = "fraud_type_0" if r<0.42 else "fraud_type_1" if r<0.60 else "fraud_type_2" if r<0.63 else "fraud_type_3"
+        # Even distribution across all 4 types so all get shown during demo
+        ft = ("fraud_type_0" if r < 0.30 else
+              "fraud_type_1" if r < 0.55 else
+              "fraud_type_2" if r < 0.75 else
+              "fraud_type_3")
+
+    # Realistic amounts per fraud type
+    if ft == "fraud_type_0":   amount = round(random.uniform(800, 4500), 2)   # Card cloning: large
+    elif ft == "fraud_type_1": amount = round(random.uniform(200, 1500), 2)   # Takeover: medium-large
+    elif ft == "fraud_type_2": amount = round(random.uniform(1, 15), 2)       # Probing: tiny test charges
+    elif ft == "fraud_type_3": amount = round(random.uniform(300, 2000), 2)   # ZSL: variable
+    else:                      amount = round(random.lognormvariate(3.2, 1.3), 2)
+
+    risk_level = (
+        "CRITICAL" if ft in ("fraud_type_0", "fraud_type_3") else
+        "HIGH"     if ft == "fraud_type_1" else
+        "MEDIUM"   if ft == "fraud_type_2" else "LOW"
+    )
+
     return {
         "id": f"SIM-{random.randint(100000,999999)}", "timestamp": time.time(),
-        "amount": round(random.lognormvariate(3.2,1.3),2), "true_label": 1 if is_fraud else 0,
+        "amount": amount, "true_label": 1 if is_fraud else 0,
         "is_fraud": is_fraud, "fraud_type": ft,
-        "fl_probability": round(random.uniform(0.7,0.99) if is_fraud else random.uniform(0.01,0.15),4),
-        "fzsl_fraud_probability": round(random.uniform(0.6,0.95) if is_fraud else random.uniform(0.01,0.1),4),
-        "confidence": round(random.uniform(0.75,0.98) if is_fraud else random.uniform(0.85,0.99),4),
+        "fl_probability":   round(random.uniform(0.78, 0.99) if is_fraud else random.uniform(0.01, 0.12), 4),
+        "fzsl_fraud_probability": round(random.uniform(0.70, 0.97) if is_fraud else random.uniform(0.01, 0.08), 4),
+        "confidence":       round(random.uniform(0.80, 0.99) if is_fraud else random.uniform(0.88, 0.99), 4),
         "similarity_scores": {}, "shap_values": None, "shap_ready": False,
         "message": "Simulation mode (model not loaded).",
         "model_used": "SIMULATION",
         "geo_location": _gen_geo(ft) if is_fraud else None,
-        "risk_level": "HIGH" if is_fraud else "LOW",
+        "risk_level": risk_level,
     }
 
 

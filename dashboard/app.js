@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadComparison();
   loadShap('fraud_type_0');
   loadFraudTypes();
+  restoreFeedFromStorage();   // restore feed if returning from audit log
   startPolling();
   startDriftPolling();
   startPrivacyPolling();
@@ -656,6 +657,32 @@ function addFeedItem(txn) {
   c.prepend(div);
   const items = c.querySelectorAll('.feed-item');
   if (items.length > 100) items[items.length-1].remove();
+
+  // Persist last 50 items to sessionStorage for audit log back-navigation
+  try {
+    const stored = [];
+    c.querySelectorAll('.feed-item').forEach((el, i) => {
+      if (i < 50) stored.push(el.outerHTML);
+    });
+    sessionStorage.setItem('fraudshield_feed', JSON.stringify(stored));
+  } catch(_) {}
+}
+
+// ── FEED PERSISTENCE (survives audit log back-navigation) ────────────────────
+function restoreFeedFromStorage() {
+  try {
+    const stored = JSON.parse(sessionStorage.getItem('fraudshield_feed') || '[]');
+    if (stored.length === 0) return;
+    const c = document.getElementById('feed-container');
+    const empty = c.querySelector('.feed-empty');
+    if (empty) empty.remove();
+    stored.forEach(html => {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      const el = wrap.firstElementChild;
+      if (el) c.appendChild(el);
+    });
+  } catch(_) {}
 }
 
 // ── ALERTS ──────────────────────────────────────────
