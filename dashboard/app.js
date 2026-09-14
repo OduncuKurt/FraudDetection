@@ -897,14 +897,12 @@ function addMapMarker(pt) {
 
   window._riskMapMarkers.push(pulse, dot);
 
-  // Animate new marker in with a scale effect
-  if (newCount || true) {
-    dot.setStyle({ fillOpacity: 0 });
-    let op = 0;
-    const fadeIn = setInterval(() => {
-      op = Math.min(op + 0.08, 0.9);
-      dot.setStyle({ fillOpacity: op });
-      if (op >= 0.9) clearInterval(fadeIn);
-    }, 30);
-  }
+  // Fade-in animation for new marker
+  dot.setStyle({ fillOpacity: 0 });
+  let op = 0;
+  const fadeIn = setInterval(() => {
+    op = Math.min(op + 0.08, 0.9);
+    dot.setStyle({ fillOpacity: op });
+    if (op >= 0.9) clearInterval(fadeIn);
+  }, 30);
 }

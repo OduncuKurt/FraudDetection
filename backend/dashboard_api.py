@@ -1,6 +1,7 @@
 """
-dashboard_api.py — v4.0
-Gerçek model, per-transaction SHAP (GradientExplainer), dürüst fraud tipi açıklamaları.
+dashboard_api.py — v4.1
+Federated Learning + Fuzzy Zero-Shot Learning fraud detection API.
+Real model, per-transaction SHAP (GradientExplainer), honest fraud type explanations.
 """
 import os, sys, time, random, threading
 import numpy as np
@@ -150,41 +151,40 @@ def _gen_geo(fraud_type: str) -> dict:
 async def startup_event():
     global _model_loaded, _analyzer, _df, _xai_engine
 
-    print("[API] Başlatılıyor...")
+    print("[API] Starting up...")
 
     pkl_path = os.path.join("checkpoints", "fraud_system.pkl")
     if os.path.exists(pkl_path):
         try:
             from src.inference import FraudAnalyzer
-            print("[API] Gercek model yukleniyor...")
+            print("[API] Loading real model...")
             _analyzer = FraudAnalyzer(checkpoint=pkl_path)
             _model_loaded = True
             _stats["model_metrics"]["fl_threshold"] = float(_analyzer.system.fl_threshold)
-            print(f"[API] OK - Model hazir. FL threshold={_analyzer.system.fl_threshold:.4f}")
+            print(f"[API] OK - Model ready. FL threshold={_analyzer.system.fl_threshold:.4f}")
 
-            # XAIEngine baslat
+            # Initialize XAI Engine
             _xai_engine = XAIEngine(
                 fl_model=_analyzer.system.fl_model,
                 scaler=_analyzer.system.scaler,
                 feature_names=_analyzer.system.feature_names,
                 background_data=_analyzer.system.shap_background,
             )
-            print("[API] OK - XAI Engine hazir (GradientExplainer + Counterfactual).")
+            print("[API] OK - XAI Engine ready (GradientExplainer + Counterfactual).")
         except Exception as e:
-            print(f"[HATA] Model yuklenemedi: {e}")
+            print(f"[ERROR] Model could not be loaded: {e}")
 
     csv_path = os.path.join("data", "creditcard.csv")
     if os.path.exists(csv_path):
-        print("[API] creditcard.csv yukleniyor...")
+        print("[API] Loading creditcard.csv...")
         raw = pd.read_csv(csv_path)
-        # Gercekci dagilim: fraud %0.17 → her ~600 normalden 1 fraud
+        # Realistic distribution: fraud 0.17% → ~1 fraud per 600 normal
         fraud_df  = raw[raw["Class"] == 1].copy()          # 492 fraud
         normal_df = raw[raw["Class"] == 0].sample(n=5000, random_state=42)
         _df = pd.concat([normal_df, fraud_df]).sample(frac=1, random_state=0).reset_index(drop=True)
-        print(f"[API] OK - {len(_df)} islem hazir ({len(fraud_df)} fraud, {len(normal_df)} normal).")
+        print(f"[API] OK - {len(_df)} transactions ready ({len(fraud_df)} fraud, {len(normal_df)} normal).")
     
-    # GxI SHAP her islem icin anlik hesaplaniyor (arka plan thread gerekmiyor)
-    print("[API] Hazir!")
+    print("[API] Ready!")
 
 
 

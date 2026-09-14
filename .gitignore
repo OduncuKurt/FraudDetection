@@ -1,30 +1,26 @@
-# Python Sanal Ortam
+# Python Virtual Environment
 venv/
 .env/
 .venv/
 env/
 
-# Derlenmiş dosyalar ve önbellek
+# Compiled files and cache
 __pycache__/
 *.py[cod]
 *$py.class
 
-# ─── Veri dosyaları (büyük, GitHub'a yüklenmiyor) ───────────────────────────
+# ─── Data files (large, not uploaded to GitHub) ──────────────────────────────
 data/
 *.csv
 *.xlsx
 *.parquet
 
-# ─── Eğitilmiş model dosyaları (büyük, indirilebilir) ───────────────────────
-checkpoints/
-*.pkl
-*.model
-*.h5
-*.hdf5
-*.pt
-*.pth
+# ─── Model files: included because they are small (<1MB) and needed for deploy
+# checkpoints/   <-- NOT ignored, needed for Railway/Render deployment
+# *.pkl          <-- NOT ignored
+# *.pt           <-- NOT ignored
 
-# ─── Otomatik üretilen log/sonuç dosyaları ──────────────────────────────────
+# ─── Auto-generated log/result files ─────────────────────────────────────────
 results/
 
 # ─── Jupyter ─────────────────────────────────────────────────────────────────
@@ -36,7 +32,7 @@ results/
 *.swp
 *.swo
 
-# ─── Sistem ──────────────────────────────────────────────────────────────────
+# ─── System ──────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
